@@ -1,0 +1,42 @@
+package com.sergeysav.hexasphere
+
+import com.sergeysav.hexasphere.gl.Application
+import org.joml.Matrix3f
+import org.joml.Matrix4f
+import org.joml.Vector3f
+import org.joml.Vector3fc
+import org.lwjgl.opengl.GL20
+import org.lwjgl.system.MemoryStack
+import java.util.Scanner
+
+/**
+ * @author sergeys
+ */
+fun loadResource(fileName: String): String {
+    Application::class.java.getResourceAsStream(fileName).use {
+        Scanner(it, "UTF-8").use { scan ->
+            scan.useDelimiter("\\A")
+            return scan.next()
+        }
+    }
+}
+
+fun Matrix3f.setUniform(uniformId: Int) {
+    MemoryStack.stackPush().use { stack ->
+        // Dump the matrix into a float buffer
+        val fb = stack.mallocFloat(9)
+        this.get(fb)
+        GL20.glUniformMatrix3fv(uniformId, false, fb)
+    }
+}
+
+fun Matrix4f.setUniform(uniformId: Int) {
+    MemoryStack.stackPush().use { stack ->
+        // Dump the matrix into a float buffer
+        val fb = stack.mallocFloat(16)
+        this.get(fb)
+        GL20.glUniformMatrix4fv(uniformId, false, fb)
+    }
+}
+
+val ZERO: Vector3fc = Vector3f(0f, 0f, 0f)
