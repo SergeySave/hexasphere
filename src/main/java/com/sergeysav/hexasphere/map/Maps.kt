@@ -3,7 +3,6 @@ package com.sergeysav.hexasphere.map
 import com.sergeysav.hexasphere.map.tile.Tile
 import org.joml.SimplexNoise
 import org.joml.Vector3f
-import org.joml.Vector3fc
 import java.util.LinkedList
 import java.util.Queue
 import kotlin.math.PI
@@ -20,7 +19,7 @@ import kotlin.random.Random
 private val PHI = (1 + sqrt(5.0)) / 2.0
 internal typealias KMap<K, V> = kotlin.collections.Map<K, V>
 
-fun createBaseMap(size: Int): Map {
+fun MapGenerationSettings.createBaseMap(): Map {
     val faces = createIcosohedron()
     val vertices = splitIcos(size, faces)
     val vertexMap = vertices.groupBy(Vertex::center).mapValues { it.value[0] }
@@ -86,45 +85,51 @@ private fun loosen(input: KMap<Tile, Int>): MutableMap<Tile, Int> {
     return tPlates
 }
 
-fun Map.generateTectonicPlates(plates: Int, random: Random): Array<TectonicPlate> {
+fun MapGenerationSettings.generateTectonicPlates(map: Map): Array<TectonicPlate> {
     var tPlates = mutableMapOf<Tile, Int>()
 
     for (i in 0 until plates) {
         var tileIndex: Int
         do {
-            tileIndex = random.nextInt(tiles.size)
-        } while (tPlates.containsKey(tiles[tileIndex]))
-        tPlates[tiles[tileIndex]] = i
+            tileIndex = random.nextInt(map.tiles.size)
+        } while (tPlates.containsKey(map.tiles[tileIndex]))
+        tPlates[map.tiles[tileIndex]] = i
     }
     tPlates = loosen(tPlates) //Fill out the tPlates
     
-    for (i in 0 until 4) {
+    for (i in 0 until 1) {
         tPlates = loosen(tPlates) //Loosen the plates
     }
     
-    val isLand = BooleanArray(plates) { true }
-    isLand.indices.shuffled(random).take(plates/2).forEach { isLand[it] = false }
-    
     //Flip the tPlates variable around
+    val vec1 = Vector3f()
+    val vec2 = Vector3f()
     val tectonicPlates = tPlates.entries.groupBy { it.value }
             .map {
                 val angle = (random.nextFloat() * 2 * PI / 180).toFloat()
-                val landPlate = isLand[it.key]
-                var height = random.nextFloat() * 0.5f
+//                val landPlate = isLand[it.key]
+                val plateTiles = it.value.map { it.key }.toSet()
+                vec2.zero()
+                plateTiles.forEach { tile ->
+                    tile.getCenter(vec1)
+                    vec2.add(vec1)
+                }
+                vec2.mul(1f/plateTiles.size)
+                val noiseVal = tectonicPlateHeightNoise(vec2)
+                val landPlate = noiseVal > 0
+                var height = noiseVal * 0.5f
                 height = if (landPlate) {
                     0.1f + height
                 } else {
                     -0.1f - height
                 }
-                TectonicPlate(it.value.map { it.key }.toSet(), random.nextUnitVector(), angle, landPlate, height)
+                TectonicPlate(plateTiles, random.nextUnitVector(), angle, landPlate, height)
             }.toTypedArray()
     
     val tilesToPlates = tectonicPlates.flatMap { it.tiles.map { tile -> tile to it } }
             .groupBy { it.first }
             .mapValues { pair -> pair.value.map { it.second }.first() }
     
-    val vec1 = Vector3f()
-    val vec2 = Vector3f()
     val vec3 = Vector3f()
     val vec4 = Vector3f()
     for (plate in tectonicPlates) {
@@ -172,17 +177,14 @@ fun Map.generateTectonicPlates(plates: Int, random: Random): Array<TectonicPlate
     return tectonicPlates
 }
 
-fun generateElevations(plates: Array<TectonicPlate>): KMap<Tile, Float> {
+fun MapGenerationSettings.generateElevations(plates: Array<TectonicPlate>): KMap<Tile, Float> {
     val elevations = mutableMapOf<Tile, Float>()
     val tilesToPlates = plates.flatMap { it.tiles.map { tile -> tile to it } }
             .groupBy { it.first }
             .mapValues { pair -> pair.value.map { it.second }.first() }
     
-    plates.map { it.tiles.associateWith { _ -> it.height } }.forEach { elevations.putAll(it) }
+    plates.map { plate -> plate.tiles.associateWith { plate.height } }.forEach { elevations.putAll(it) }
     
-    val pressureStrength = 1f
-    val regressionStrength = 5f
-    val innerStrength = 1f
     for (plate in plates) {
         val innerLWBAdj = mutableSetOf<Tile>()
         for (tile in plate.boundaryTiles) {
@@ -193,13 +195,13 @@ fun generateElevations(plates: Array<TectonicPlate>): KMap<Tile, Float> {
             elevations[tile] = elevations[tile]!! + otherPlates.map { other ->
                 val otherPlate = tilesToPlates[other]!!
                 if (plate.landPlate == otherPlate.landPlate) { //both land or both water
-                    pressurePerPlate * pressureStrength
+                    pressurePerPlate * similarCollisionCoef
                 } else {
                     if (pressure > 0) {
                         innerLWBAdj.addAll(tile.adjacent.filter { plate.tiles.contains(it) && !plate.boundaryTiles.contains(it) })
-                        min(pressurePerPlate * regressionStrength, 0.5f) * (elevations[other]!! - elevations[tile]!!)
+                        min(pressurePerPlate * diffRegressionCoef, 0.5f) * (elevations[other]!! - elevations[tile]!!)
                     } else {
-                        pressurePerPlate * pressureStrength
+                        pressurePerPlate * similarCollisionCoef
                     }
                 }
             }.sum()
@@ -210,9 +212,9 @@ fun generateElevations(plates: Array<TectonicPlate>): KMap<Tile, Float> {
                     .map { plate.pressures[it]!! }
                     .max()!!
             elevations[innerTile] = elevations[innerTile]!! + if (plate.landPlate) {
-                innerStrength * pressure
+                diffCollisionCoef * pressure
             } else {
-                -innerStrength * pressure
+                -diffCollisionCoef * pressure
             }
         }
     }
@@ -228,8 +230,8 @@ fun generateElevations(plates: Array<TectonicPlate>): KMap<Tile, Float> {
 //  repeat until no changes have been made:
 //   find tiles where min(adjacent elevation) < elevation
 //   for those tiles set elevation = min(adjacent elevation) + epsilon
-fun KMap<Tile, Float>.erode(seaLevel: Float, epsilon: Float): KMap<Tile, Float> {
-    var elevation = mapValues { (tile, value) ->
+fun MapGenerationSettings.erode(elevations: KMap<Tile, Float>): KMap<Tile, Float> {
+    var elevation = elevations.mapValues { (_, value) ->
         if (value < seaLevel) {
             value
         } else {
@@ -244,8 +246,8 @@ fun KMap<Tile, Float>.erode(seaLevel: Float, epsilon: Float): KMap<Tile, Float> 
             var newValue = value
             val lowestAdjacent = tile.adjacent.minBy { elevation[it]!! }!!
             val minElevation = elevation[lowestAdjacent]!!
-            if (newValue > this[tile]!!) {
-                newValue = this[tile]!!
+            if (newValue > elevations[tile]!!) {
+                newValue = elevations[tile]!!
             }
             if (newValue < minElevation) {
                 newValue = minElevation + epsilon
@@ -270,7 +272,7 @@ fun distributeElevations(elevations: KMap<Tile, Float>, random: Random, range: F
     }
 }
 
-fun Map.generateHeat(elevations: KMap<Tile, Float>, noise: (Vector3fc)->Float): KMap<Tile, Float> {
+fun MapGenerationSettings.generateHeat(map: Map, elevations: KMap<Tile, Float>): KMap<Tile, Float> {
     val tEquator = 1.0
     val tPole = 0.0
     val tLat = { cosTheta: Float -> (tEquator - tPole) * cosTheta + tPole}
@@ -279,7 +281,7 @@ fun Map.generateHeat(elevations: KMap<Tile, Float>, noise: (Vector3fc)->Float): 
     val heat = mutableMapOf<Tile, Float>()
     
     val vec1 = Vector3f()
-    tiles.forEach { tile ->
+    map.tiles.forEach { tile ->
         tile.getCenter(vec1)
         val dot = vec1.normalize().dot(0f, 1f, 0f)
         //a.b = |a||b|cos(theta)
@@ -291,56 +293,54 @@ fun Map.generateHeat(elevations: KMap<Tile, Float>, noise: (Vector3fc)->Float): 
         tile.getCenter(vec1)
         val height = elevations[tile]!!
         
-//        cooling factor
-//        val oceanCooling = if (elevations[tile]!! < 0) 0.6f else 1f
-//        val heightCooling = if (elevations[tile]!! > 0) 1 - elevations[tile]!! * elevations[tile]!! * 1.5f else 1f
-        
-        heat[tile] = tLat(sin).toFloat() + noise(vec1)/8 - (if (height < 0) 0f else height/5)
+        heat[tile] = tLat(sin).toFloat() + heatNoise(vec1)/12 - (if (height < 0) 0f else height/5)
     }
     
     return heat
 }
 
-fun Map.generateMoisture(noise: (Vector3fc) -> Float): KMap<Tile, Float> {
-    val map = mutableMapOf<Tile, Float>()
+fun MapGenerationSettings.generateMoisture(map: Map): KMap<Tile, Float> {
+    val moisture = mutableMapOf<Tile, Float>()
     val vec1 = Vector3f()
     
-    tiles.forEach {
+    map.tiles.forEach {
         it.getCenter(vec1)
         val dot = vec1.normalize().dot(0f, 1f, 0f)
-//        val sin = sqrt(1 - dot * dot)
         val theta = asin(dot)
         it.getCenter(vec1)
-        map[it] = ((1/(1 + (4*theta)*(4*theta)) + 0.5/(1 + (4*(theta - PI/4))*(4*(theta - PI/4))) + 0.5/(1 + (4*(theta + PI/4))*(4*(theta + PI/4))) - 0.0763)/1.0157).toFloat() + noise(vec1)/8
+        moisture[it] = ((1 / (1 + (4 * theta) * (4 * theta)) + 0.5 / (1 + (4 * (theta - PI / 4)) * (4 * (theta - PI / 4))) + 0.5 / (1 + (4 * (theta + PI / 4)) * (4 * (theta + PI / 4))) - 0.0763) / 1.0157).toFloat() + moistureNoise(vec1) / 6
     }
     
-    return map
+    return moisture
 }
 
-fun Map.generateBiomes(elevations: KMap<Tile, Float>, temperatures: KMap<Tile,  Float>, moisture: KMap<Tile, Float>, noise: (Vector3fc) -> Float): KMap<Tile, Biome> {
-    val map = mutableMapOf<Tile, Biome>()
+fun MapGenerationSettings.generateBiomes(map: Map, elevations: KMap<Tile, Float>, temperatures: KMap<Tile,  Float>, moisture: KMap<Tile, Float>): KMap<Tile, Biome> {
+    val biomes = mutableMapOf<Tile, Biome>()
     val vec = Vector3f()
-    tiles.forEach {
+    map.tiles.forEach {
         val h = elevations[it]!!
         val t = temperatures[it]!!
         val m = moisture[it]!!
         
         it.getCenter(vec)
-        val n = noise(vec)
-        println(n)
+        val n = biomeNoise(vec)
+//        println(n)
         val smallerCount = it.adjacent.count { adj -> elevations[adj]!! <= h }.toDouble() / it.adjacent.size
+        val isCoastal = it.adjacent.any { adj -> elevations[adj]!! >= 0 }
+        val isCoastal_2 = it.adjacent.any { adj -> adj.adjacent.any { adj2 -> elevations[adj2]!! >= 0 } }
         
-        map[it] = if (h < 0) {
+        biomes[it] = if (h < 0) {
             when {
                 t < 0.25 -> Biome.ICE
-                h < -0.20 -> Biome.OCEAN
-                else    -> Biome.COAST
+                h > (-0.015 + n/15) || isCoastal || (isCoastal_2 && n > -0.15) -> Biome.COAST
+//                h < -0.025 -> Biome.OCEAN
+                else    -> Biome.OCEAN
             }
-        } else if (smallerCount + n/2 < 1.0/3) {
+        } else if (smallerCount + n/2 + h < 1.4/4) {
             Biome.MOUNTAIN
         } else if (0.85 * t < m && t > 0.5) {
             Biome.RAINFOREST
-        } else if (0.65 * t < m && t > 0.5) {
+        } else if (0.45 * t < m && t > 0.4) {
             Biome.FOREST
         } else if (0.35 * t < m) {
             if (t > 0.5) {
@@ -349,10 +349,14 @@ fun Map.generateBiomes(elevations: KMap<Tile, Float>, temperatures: KMap<Tile,  
                 Biome.TUNDRA
             }
         } else {
-            Biome.TAIGA
+            if (t > 0.4) {
+                Biome.SAVANNA
+            } else {
+                Biome.TAIGA
+            }
         }
     }
-    return map
+    return biomes
 }
 
 private fun getIcosVertices(): Array<Vertex> {

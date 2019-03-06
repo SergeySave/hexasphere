@@ -6,6 +6,7 @@ import com.sergeysav.hexasphere.gl.GLDataUsage
 import com.sergeysav.hexasphere.gl.GLDrawingMode
 import com.sergeysav.hexasphere.gl.Mesh
 import com.sergeysav.hexasphere.gl.Vec3VertexAttribute
+import com.sergeysav.hexasphere.map.MapGenerationSettings
 import com.sergeysav.hexasphere.map.createBaseMap
 import com.sergeysav.hexasphere.map.erode
 import com.sergeysav.hexasphere.map.generateBiomes
@@ -17,13 +18,9 @@ import com.sergeysav.hexasphere.map.tile.Tile
 import com.sergeysav.hexasphere.map.tile.TileType
 import mu.KotlinLogging
 import org.joml.Matrix4f
-import org.joml.SimplexNoise
 import org.joml.Vector3f
-import org.joml.Vector3fc
 import org.lwjgl.glfw.GLFW
 import org.lwjgl.opengl.GL11
-import kotlin.math.max
-import kotlin.random.Random
 
 
 /**
@@ -51,7 +48,14 @@ class Hexasphere : Application(800, 600) {
     lateinit var normalRenderer: NormalRenderer
     lateinit var stereographicRenderer: SimpleStereographicRenderer
     
-    val map = createBaseMap(31)
+    val mapGenerationSettings = MapGenerationSettings(31, 30, 0L,
+                                                      8, 0.9f, 0.5f,
+                                                      0.2f, 5f, 1f,
+                                                      0f, 0.05f,
+                                                      8, 0.3f, 0.5f,
+                                                      8, 0.3f, 0.5f,
+                                                      2, 0.8f, 1.2f)
+    val map = mapGenerationSettings.createBaseMap()
     var seed = 0f
     
     override fun create() {
@@ -60,23 +64,15 @@ class Hexasphere : Application(800, 600) {
         val numTriangles = map.tiles.asSequence().map(Tile::type).map { it.vertices - 2 }.sum()
         indices = IntArray(3 * numTriangles)
     
-        val random = Random(0L)
-        val tectonicPlates = map.generateTectonicPlates(30, random)
-        var elevations = generateElevations(tectonicPlates)
-        elevations = elevations.erode(0f, 0.05f)
+        // Plate Noise Generator
+        val tectonicPlates = mapGenerationSettings.generateTectonicPlates(map)
+        var elevations = mapGenerationSettings.generateElevations(tectonicPlates)
+        elevations = mapGenerationSettings.erode(elevations)
         // "blur" elevations
-        val heat = map.generateHeat(elevations, noiseGenerator(random.nextFloat()*1e4.toFloat(), octaves = 8, aScaling = 0.3f))
-        val moisture = map.generateMoisture(noiseGenerator(random.nextFloat()*1e4.toFloat(), octaves = 8, aScaling = 0.3f))
-        val biomes = map.generateBiomes(elevations, heat, moisture, noiseGenerator(random.nextFloat()*1e4.toFloat(), octaves = 2, aScaling = 0.8f, fScaling = 1.2f))
-
-//        val min = moisture.values.min()!!
-//        val max = moisture.values.max()!!
-//        val diff = max - min
-//        val adjust: (Float)->Float = { (it - min)/diff }
-    
-//        log.info { min }
-//        log.info { max }
-    
+        val heat = mapGenerationSettings.generateHeat(map, elevations)
+        val moisture = mapGenerationSettings.generateMoisture(map)
+        val biomes = mapGenerationSettings.generateBiomes(map, elevations, heat, moisture)
+        
         var v = 0
         var i = 0
         val verts = Array(6) { Vector3f() }
@@ -85,7 +81,6 @@ class Hexasphere : Application(800, 600) {
         for ((plateNum, plate) in tectonicPlates.withIndex()) {
             for (tile in plate.tiles) {
                 tile.getCenter(verts[0])
-                val color = computeType(verts[0], seed)
                 val num = tile.getVertices(verts)
                 val vertexNum = v / 6
     
@@ -96,9 +91,9 @@ class Hexasphere : Application(800, 600) {
                     vertices[v++] = verts[j].x
                     vertices[v++] = verts[j].y
                     vertices[v++] = verts[j].z
-                    vertices[v++] = biome.r//if (moisture[tile]!! <= 0.65*heat[tile]!!) 1.0f else 0.0f
-                    vertices[v++] = biome.g//if (moisture[tile]!! >= 0.65*heat[tile]!!) 1.0f else 0.0f
-                    vertices[v++] = biome.b//0.0f
+                    vertices[v++] = biome.r
+                    vertices[v++] = biome.g
+                    vertices[v++] = biome.b
                 }
                 for (j in 2 until num) {
                     indices[i++] = vertexNum
@@ -237,34 +232,7 @@ class Hexasphere : Application(800, 600) {
 //        }
 //    }
     
-    fun computeType(pos: Vector3f, seed: Float): Vector3f {
-        val noise  = 0.125 * SimplexNoise.noise(pos.x * 2, pos.y * 2, pos.z * 2, seed) +
-                     0.125 * SimplexNoise.noise(pos.x * 1.5f, pos.y * 1.5f, pos.z * 1.5f, seed) +
-                     0.125 * SimplexNoise.noise(pos.x, pos.y, pos.z, seed) +
-                     0.125 * SimplexNoise.noise(pos.x / 1.5f, pos.y / 1.5f, pos.z / 1.5f, seed) +
-                     0.125 * SimplexNoise.noise(pos.x / 2, pos.y / 2, pos.z / 2, seed) +
-                     0.125 * SimplexNoise.noise(pos.x / 2.5f, pos.y / 2.5f, pos.z / 2.5f, seed) +
-                     0.125 * SimplexNoise.noise(pos.x / 3, pos.y / 3, pos.z / 3, seed) +
-                     0.125 * SimplexNoise.noise(pos.x / 4, pos.y / 4, pos.z / 4, seed)
-        if (noise >= 0) {
-            return Vector3f(noise.toFloat(), max(1f - noise.toFloat(), noise.toFloat()), noise.toFloat())
-        } else {
-            return Vector3f(0f, 0f, 1 + noise.toFloat())
-        }
-    }
-    
-    fun noiseGenerator(seed: Float, octaves: Int = 1, aScaling: Float = 0.5f, fScaling: Float = 2.0f): (Vector3fc)->Float {
-        val max = ((1.0 - Math.pow(aScaling.toDouble(), octaves.toDouble()))/(1 - aScaling)).toFloat()
-        return { pos ->
-            var total = 0f
-            var amp = 1f
-            var freq = 1f
-            for (i in 0 until octaves) {
-                total += amp * SimplexNoise.noise(pos.x() * freq,  pos.y() * freq,  pos.z() * freq,  seed.toFloat())
-                amp *= aScaling
-                freq *= fScaling
-            }
-            total / max
-        }
+    inline infix fun <reified A, reified  B, reified  C> ((A)->B).then(crossinline f: (B) -> C): (A) -> C {
+        return { x -> f(this(x)) }
     }
 }
