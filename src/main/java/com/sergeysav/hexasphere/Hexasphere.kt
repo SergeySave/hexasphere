@@ -6,7 +6,10 @@ import com.sergeysav.hexasphere.gl.GLDataUsage
 import com.sergeysav.hexasphere.gl.GLDrawingMode
 import com.sergeysav.hexasphere.gl.Mesh
 import com.sergeysav.hexasphere.gl.Vec3VertexAttribute
+import com.sergeysav.hexasphere.map.Biome
+import com.sergeysav.hexasphere.map.KMap
 import com.sergeysav.hexasphere.map.MapGenerationSettings
+import com.sergeysav.hexasphere.map.TectonicPlate
 import com.sergeysav.hexasphere.map.createBaseMap
 import com.sergeysav.hexasphere.map.erode
 import com.sergeysav.hexasphere.map.generateBiomes
@@ -18,6 +21,7 @@ import com.sergeysav.hexasphere.map.tile.Tile
 import com.sergeysav.hexasphere.map.tile.TileType
 import mu.KotlinLogging
 import org.joml.Matrix4f
+import org.joml.Vector2f
 import org.joml.Vector3f
 import org.lwjgl.glfw.GLFW
 import org.lwjgl.opengl.GL11
@@ -58,6 +62,13 @@ class Hexasphere : Application(800, 600) {
     val map = mapGenerationSettings.createBaseMap()
     var seed = 0f
     
+    val v2 = Vector2f()
+    val a = DoubleArray(1)
+    val b = DoubleArray(1)
+    lateinit var tectonicPlates: Array<TectonicPlate>
+    lateinit var biomes: KMap<Tile, Biome>
+    
+    
     override fun create() {
         val numVertices = map.tiles.asSequence().map(Tile::type).map(TileType::vertices).sum()
         vertices = FloatArray(6 * numVertices)
@@ -65,13 +76,13 @@ class Hexasphere : Application(800, 600) {
         indices = IntArray(3 * numTriangles)
     
         // Plate Noise Generator
-        val tectonicPlates = mapGenerationSettings.generateTectonicPlates(map)
+        tectonicPlates = mapGenerationSettings.generateTectonicPlates(map)
         var elevations = mapGenerationSettings.generateElevations(tectonicPlates)
         elevations = mapGenerationSettings.erode(elevations)
         // "blur" elevations
         val heat = mapGenerationSettings.generateHeat(map, elevations)
         val moisture = mapGenerationSettings.generateMoisture(map)
-        val biomes = mapGenerationSettings.generateBiomes(map, elevations, heat, moisture)
+        biomes = mapGenerationSettings.generateBiomes(map, elevations, heat, moisture)
         
         var v = 0
         var i = 0
@@ -80,6 +91,7 @@ class Hexasphere : Application(800, 600) {
     
         for ((plateNum, plate) in tectonicPlates.withIndex()) {
             for (tile in plate.tiles) {
+                tile.vertexIndex = v
                 tile.getCenter(verts[0])
                 val num = tile.getVertices(verts)
                 val vertexNum = v / 6
@@ -119,7 +131,7 @@ class Hexasphere : Application(800, 600) {
     
         cameraController = CameraController(Camera(Math.toRadians(45.0).toFloat(), width.toFloat() / height, 0.1f,
                         100f))
-        cameraController.setPos(5f, 0f, 0f)
+        cameraController.setPos(2f, 0f, 0f)
         cameraController.lookAt(0f, 0f, 0f)
     
         log.info { "Creating Mesh" }
@@ -140,10 +152,40 @@ class Hexasphere : Application(800, 600) {
     override fun render() {
         GL11.glClear(GL11.GL_COLOR_BUFFER_BIT or GL11.GL_DEPTH_BUFFER_BIT) // clear the framebuffer
         
-        val upDown = 0.1f * (if (keysDown.contains(GLFW.GLFW_KEY_W)) 1 else 0 + if (keysDown.contains(GLFW.GLFW_KEY_S)) -1 else 0)
-        val rightLeft = 0.1f * (if (keysDown.contains(GLFW.GLFW_KEY_D)) 1 else 0 + if (keysDown.contains(GLFW.GLFW_KEY_A)) -1 else 0)
-        val rotate = 0.1f * (if (keysDown.contains(GLFW.GLFW_KEY_E)) 1 else 0 + if (keysDown.contains(GLFW.GLFW_KEY_Q)) -1 else 0)
-        val inOut = 0.1f * (if (keysDown.contains(GLFW.GLFW_KEY_SPACE)) 1 else 0 + if (keysDown.contains(GLFW.GLFW_KEY_LEFT_SHIFT)) -1 else 0)
+        val speed = (0.1f * Math.pow(cameraController.camera.position.length().toDouble() / 5, 1.5)).toFloat()
+        
+        val upDown = speed * (if (keysDown.contains(GLFW.GLFW_KEY_W)) 1 else 0 + if (keysDown.contains(GLFW.GLFW_KEY_S)) -1 else 0)
+        val rightLeft = speed * (if (keysDown.contains(GLFW.GLFW_KEY_D)) 1 else 0 + if (keysDown.contains(GLFW.GLFW_KEY_A)) -1 else 0)
+        val rotate = 0.075f * (if (keysDown.contains(GLFW.GLFW_KEY_E)) 1 else 0 + if (keysDown.contains(GLFW.GLFW_KEY_Q)) -1 else 0)
+        val inOut = speed * (if (keysDown.contains(GLFW.GLFW_KEY_SPACE)) 1 else 0 + if (keysDown.contains(GLFW.GLFW_KEY_LEFT_SHIFT)) -1 else 0)
+        
+        GLFW.glfwGetCursorPos(window, a, b)
+    
+        val mouseoverTile = renderer.getMouseoverTile(2 * a[0].toFloat() / width - 1, 2 * b[0].toFloat() / height - 1,
+                                                      tectonicPlates, matrix, cameraController)
+    
+        for ((plateNum, plate) in tectonicPlates.withIndex()) {
+            for (tile in plate.tiles) {
+                var vert = tile.vertexIndex
+                val biome = biomes[tile]!!
+                for (j in 0 until tile.type.vertices) {
+                    vert++
+                    vert++
+                    vert++
+                    if (mouseoverTile == tile) {
+                        vertices[vert++] = 1.0f
+                        vertices[vert++] = 0.0f
+                        vertices[vert++] = 0.0f
+                    } else {
+                        vertices[vert++] = biome.r
+                        vertices[vert++] = biome.g
+                        vertices[vert++] = biome.b
+                    }
+                }
+            }
+        }
+        mesh.setVertexData(vertices, GLDataUsage.DYNAMIC)
+        
         
         cameraController.run {
             setAspect(width, height)
@@ -155,8 +197,8 @@ class Hexasphere : Application(800, 600) {
             if (camera.position.lengthSquared() < 1.25*1.25f) {
                 camera.position.normalize(1.25f)
             }
-            if (camera.position.lengthSquared() > 25.95*25.95f) {
-                camera.position.normalize(25.95f)
+            if (camera.position.lengthSquared() > 8*8) {
+                camera.position.normalize(8f)
             }
             
             update()
@@ -167,22 +209,6 @@ class Hexasphere : Application(800, 600) {
         lastNano = now
         
         renderer.render(mesh, matrix, cameraController.camera)
-        
-//        seed += 1f
-//        val center = Vector3f()
-//        var v = 0
-//        for (tile in map.tiles) {
-//            tile.getCenter(center)
-//            val color = computeType(center, seed)
-//            val num = tile.type.vertices
-//            for (j in 0 until num) {
-//                v += 3
-//                vertices[v++] = color.x
-//                vertices[v++] = color.y
-//                vertices[v++] = color.z
-//            }
-//        }
-//        mesh.setVertexData(vertices, GLDataUsage.DYNAMIC)
     }
     
     override fun cleanup() {
@@ -199,6 +225,12 @@ class Hexasphere : Application(800, 600) {
                 renderer = normalRenderer
             }
         }
+    }
+    
+    override fun onMouseAction(button: Int, action: Int, mods: Int, xpos: Double, ypos: Double) {
+//        if (button == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
+//
+//        }
     }
     
 //    override fun onMouseAction(button: Int, action: Int, mods: Int, x: Double, y: Double) {
