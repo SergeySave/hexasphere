@@ -6,22 +6,11 @@ import com.sergeysav.hexasphere.gl.GLDataUsage
 import com.sergeysav.hexasphere.gl.GLDrawingMode
 import com.sergeysav.hexasphere.gl.Mesh
 import com.sergeysav.hexasphere.gl.Vec3VertexAttribute
-import com.sergeysav.hexasphere.map.Biome
-import com.sergeysav.hexasphere.map.KMap
+import com.sergeysav.hexasphere.map.Map
 import com.sergeysav.hexasphere.map.MapGenerationSettings
-import com.sergeysav.hexasphere.map.TectonicPlate
-import com.sergeysav.hexasphere.map.createBaseMap
-import com.sergeysav.hexasphere.map.erode
-import com.sergeysav.hexasphere.map.generateBiomes
-import com.sergeysav.hexasphere.map.generateElevations
-import com.sergeysav.hexasphere.map.generateHeat
-import com.sergeysav.hexasphere.map.generateMoisture
-import com.sergeysav.hexasphere.map.generateTectonicPlates
-import com.sergeysav.hexasphere.map.tile.Tile
-import com.sergeysav.hexasphere.map.tile.TileType
+import com.sergeysav.hexasphere.map.generate
 import mu.KotlinLogging
 import org.joml.Matrix4f
-import org.joml.Vector2f
 import org.joml.Vector3f
 import org.lwjgl.glfw.GLFW
 import org.lwjgl.opengl.GL11
@@ -59,62 +48,57 @@ class Hexasphere : Application(800, 600) {
                                                       8, 0.3f, 0.5f,
                                                       8, 0.3f, 0.5f,
                                                       2, 0.8f, 1.2f)
-    val map = mapGenerationSettings.createBaseMap()
-    var seed = 0f
     
-    val v2 = Vector2f()
     val a = DoubleArray(1)
     val b = DoubleArray(1)
-    lateinit var tectonicPlates: Array<TectonicPlate>
-    lateinit var biomes: KMap<Tile, Biome>
-    
+    lateinit var map: Map
     
     override fun create() {
-        val numVertices = map.tiles.asSequence().map(Tile::type).map(TileType::vertices).sum()
-        vertices = FloatArray(6 * numVertices)
-        val numTriangles = map.tiles.asSequence().map(Tile::type).map { it.vertices - 2 }.sum()
-        indices = IntArray(3 * numTriangles)
+        map = mapGenerationSettings.generate()
     
-        // Plate Noise Generator
-        tectonicPlates = mapGenerationSettings.generateTectonicPlates(map)
-        var elevations = mapGenerationSettings.generateElevations(tectonicPlates)
-        elevations = mapGenerationSettings.erode(elevations)
-        // "blur" elevations
-        val heat = mapGenerationSettings.generateHeat(map, elevations)
-        val moisture = mapGenerationSettings.generateMoisture(map)
-        biomes = mapGenerationSettings.generateBiomes(map, elevations, heat, moisture)
+        vertices = FloatArray(6 * map.numVertices)
+        indices = IntArray(3 * map.numTriangles)
         
-        var v = 0
-        var i = 0
         val verts = Array(6) { Vector3f() }
-        val vector = Vector3f()
     
-        for ((plateNum, plate) in tectonicPlates.withIndex()) {
-            for (tile in plate.tiles) {
-                tile.vertexIndex = v
-                tile.getCenter(verts[0])
-                val num = tile.getVertices(verts)
-                val vertexNum = v / 6
-    
-                val isBoundary = plate.boundaryTiles.contains(tile)
-                val biome = biomes[tile]!!
-    
+        map.apply {
+            for (i in 0 until numPentagons) {
+                val num = tiles[i].getVertices(verts)
+                val biome = tiles[i].biome
                 for (j in 0 until num) {
-                    vertices[v++] = verts[j].x
-                    vertices[v++] = verts[j].y
-                    vertices[v++] = verts[j].z
-                    vertices[v++] = biome.r
-                    vertices[v++] = biome.g
-                    vertices[v++] = biome.b
+                    vertices[5 * 6 * i + 6 * j + 0] = verts[j].x
+                    vertices[5 * 6 * i + 6 * j + 1] = verts[j].y
+                    vertices[5 * 6 * i + 6 * j + 2] = verts[j].z
+                    vertices[5 * 6 * i + 6 * j + 3] = biome.r
+                    vertices[5 * 6 * i + 6 * j + 4] = biome.g
+                    vertices[5 * 6 * i + 6 * j + 5] = biome.b
                 }
                 for (j in 2 until num) {
-                    indices[i++] = vertexNum
-                    indices[i++] = vertexNum + j - 1
-                    indices[i++] = vertexNum + j
+                    indices[(5 - 2) * 3 * i + 3 * (j - 2) + 0] = 5 * i
+                    indices[(5 - 2) * 3 * i + 3 * (j - 2) + 1] = 5 * i + j - 1
+                    indices[(5 - 2) * 3 * i + 3 * (j - 2) + 2] = 5 * i + j
+                }
+            }
+            val hexVOffset = numPentagons * 5
+            val hexIOffset = (5 - 2) * 3 * numPentagons
+            for (i in 0 until numHexagons) {
+                val num = tiles[i + numPentagons].getVertices(verts)
+                val biome = tiles[i + numPentagons].biome
+                for (j in 0 until num) {
+                    vertices[6 * 6 * i + 6 * j + 0 + 6 * hexVOffset] = verts[j].x
+                    vertices[6 * 6 * i + 6 * j + 1 + 6 * hexVOffset] = verts[j].y
+                    vertices[6 * 6 * i + 6 * j + 2 + 6 * hexVOffset] = verts[j].z
+                    vertices[6 * 6 * i + 6 * j + 3 + 6 * hexVOffset] = biome.r
+                    vertices[6 * 6 * i + 6 * j + 4 + 6 * hexVOffset] = biome.g
+                    vertices[6 * 6 * i + 6 * j + 5 + 6 * hexVOffset] = biome.b
+                }
+                for (j in 2 until num) {
+                    indices[(6 - 2) * 3 * i + 3 * (j - 2) + 0 + hexIOffset] = 6 * i + hexVOffset
+                    indices[(6 - 2) * 3 * i + 3 * (j - 2) + 1 + hexIOffset] = 6 * i + j - 1 + hexVOffset
+                    indices[(6 - 2) * 3 * i + 3 * (j - 2) + 2 + hexIOffset] = 6 * i + j + hexVOffset
                 }
             }
         }
-    
         
         matrix.identity()
     }
@@ -162,24 +146,35 @@ class Hexasphere : Application(800, 600) {
         GLFW.glfwGetCursorPos(window, a, b)
     
         val mouseoverTile = renderer.getMouseoverTile(2 * a[0].toFloat() / width - 1, 2 * b[0].toFloat() / height - 1,
-                                                      tectonicPlates, matrix, cameraController)
-    
-        for ((plateNum, plate) in tectonicPlates.withIndex()) {
-            for (tile in plate.tiles) {
-                var vert = tile.vertexIndex
-                val biome = biomes[tile]!!
-                for (j in 0 until tile.type.vertices) {
-                    vert++
-                    vert++
-                    vert++
-                    if (mouseoverTile == tile) {
-                        vertices[vert++] = 1.0f
-                        vertices[vert++] = 0.0f
-                        vertices[vert++] = 0.0f
+                                                      map, matrix, cameraController)
+        
+        map.apply {
+            for (i in 0 until numPentagons) {
+                val biome = tiles[i].biome
+                for (j in 0 until tiles[i].type.vertices) {
+                    if (mouseoverTile == tiles[i]) {
+                        vertices[5 * 6 * i + 6 * j + 3] = 1.0f
+                        vertices[5 * 6 * i + 6 * j + 4] = 0.0f
+                        vertices[5 * 6 * i + 6 * j + 5] = 0.0f
                     } else {
-                        vertices[vert++] = biome.r
-                        vertices[vert++] = biome.g
-                        vertices[vert++] = biome.b
+                        vertices[5 * 6 * i + 6 * j + 3] = biome.r
+                        vertices[5 * 6 * i + 6 * j + 4] = biome.g
+                        vertices[5 * 6 * i + 6 * j + 5] = biome.b
+                    }
+                }
+            }
+            val hexVOffset = numPentagons * 5
+            for (i in 0 until numHexagons) {
+                val biome = tiles[i + numPentagons].biome
+                for (j in 0 until tiles[i + numPentagons].type.vertices) {
+                    if (mouseoverTile == tiles[i + numPentagons]) {
+                        vertices[6 * 6 * i + 6 * j + 3 + 6 * hexVOffset] = 1.0f
+                        vertices[6 * 6 * i + 6 * j + 4 + 6 * hexVOffset] = 0.0f
+                        vertices[6 * 6 * i + 6 * j + 5 + 6 * hexVOffset] = 0.0f
+                    } else {
+                        vertices[6 * 6 * i + 6 * j + 3 + 6 * hexVOffset] = biome.r
+                        vertices[6 * 6 * i + 6 * j + 4 + 6 * hexVOffset] = biome.g
+                        vertices[6 * 6 * i + 6 * j + 5 + 6 * hexVOffset] = biome.b
                     }
                 }
             }

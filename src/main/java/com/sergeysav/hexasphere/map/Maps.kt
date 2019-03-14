@@ -17,9 +17,8 @@ import kotlin.random.Random
  * @author sergeys
  */
 private val PHI = (1 + sqrt(5.0)) / 2.0
-internal typealias KMap<K, V> = kotlin.collections.Map<K, V>
 
-fun MapGenerationSettings.createBaseMap(): Map {
+fun MapGenerationSettings.createBaseMap(): Array<Tile> {
     val faces = createIcosohedron()
     val vertices = splitIcos(size, faces)
     val vertexMap = vertices.groupBy(Vertex::center).mapValues { it.value[0] }
@@ -38,7 +37,7 @@ fun MapGenerationSettings.createBaseMap(): Map {
         tile.setAdjacent(vertex.adjacent.map { tileMap[it.center]!! }.toTypedArray())
     }
     
-    return Map(tiles.toTypedArray())
+    return tiles.toTypedArray()
 }
 
 private fun Random.nextUnitVector(): Vector3f {
@@ -85,15 +84,15 @@ private fun loosen(input: KMap<Tile, Int>): MutableMap<Tile, Int> {
     return tPlates
 }
 
-fun MapGenerationSettings.generateTectonicPlates(map: Map): Array<TectonicPlate> {
+fun MapGenerationSettings.generateTectonicPlates(map: Array<Tile>): Array<TectonicPlate> {
     var tPlates = mutableMapOf<Tile, Int>()
 
     for (i in 0 until plates) {
         var tileIndex: Int
         do {
-            tileIndex = random.nextInt(map.tiles.size)
-        } while (tPlates.containsKey(map.tiles[tileIndex]))
-        tPlates[map.tiles[tileIndex]] = i
+            tileIndex = random.nextInt(map.size)
+        } while (tPlates.containsKey(map[tileIndex]))
+        tPlates[map[tileIndex]] = i
     }
     tPlates = loosen(tPlates) //Fill out the tPlates
     
@@ -272,7 +271,7 @@ fun distributeElevations(elevations: KMap<Tile, Float>, random: Random, range: F
     }
 }
 
-fun MapGenerationSettings.generateHeat(map: Map, elevations: KMap<Tile, Float>): KMap<Tile, Float> {
+fun MapGenerationSettings.generateHeat(map: Array<Tile>, elevations: KMap<Tile, Float>): KMap<Tile, Float> {
     val tEquator = 1.0
     val tPole = 0.0
     val tLat = { cosTheta: Float -> (tEquator - tPole) * cosTheta + tPole}
@@ -281,7 +280,7 @@ fun MapGenerationSettings.generateHeat(map: Map, elevations: KMap<Tile, Float>):
     val heat = mutableMapOf<Tile, Float>()
     
     val vec1 = Vector3f()
-    map.tiles.forEach { tile ->
+    map.forEach { tile ->
         tile.getCenter(vec1)
         val dot = vec1.normalize().dot(0f, 1f, 0f)
         //a.b = |a||b|cos(theta)
@@ -299,11 +298,11 @@ fun MapGenerationSettings.generateHeat(map: Map, elevations: KMap<Tile, Float>):
     return heat
 }
 
-fun MapGenerationSettings.generateMoisture(map: Map): KMap<Tile, Float> {
+fun MapGenerationSettings.generateMoisture(map: Array<Tile>): KMap<Tile, Float> {
     val moisture = mutableMapOf<Tile, Float>()
     val vec1 = Vector3f()
     
-    map.tiles.forEach {
+    map.forEach {
         it.getCenter(vec1)
         val dot = vec1.normalize().dot(0f, 1f, 0f)
         val theta = asin(dot)
@@ -314,10 +313,10 @@ fun MapGenerationSettings.generateMoisture(map: Map): KMap<Tile, Float> {
     return moisture
 }
 
-fun MapGenerationSettings.generateBiomes(map: Map, elevations: KMap<Tile, Float>, temperatures: KMap<Tile,  Float>, moisture: KMap<Tile, Float>): KMap<Tile, Biome> {
+fun MapGenerationSettings.generateBiomes(map: Array<Tile>, elevations: KMap<Tile, Float>, temperatures: KMap<Tile,  Float>, moisture: KMap<Tile, Float>): KMap<Tile, Biome> {
     val biomes = mutableMapOf<Tile, Biome>()
     val vec = Vector3f()
-    map.tiles.forEach {
+    map.forEach {
         val h = elevations[it]!!
         val t = temperatures[it]!!
         val m = moisture[it]!!

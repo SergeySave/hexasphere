@@ -13,8 +13,6 @@ class Tile(private val center: Vector3f, private val vertices: Array<Vector3f>) 
     lateinit var adjacent: Array<Tile>
         private set
     
-    var vertexIndex: Int = -1
-    
     fun getCenter(vec: Vector3f) {
         vec.set(center)
     }

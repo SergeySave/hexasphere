@@ -4,7 +4,7 @@ import com.sergeysav.hexasphere.gl.Camera
 import com.sergeysav.hexasphere.gl.Mesh
 import com.sergeysav.hexasphere.gl.ShaderProgram
 import com.sergeysav.hexasphere.gl.bound
-import com.sergeysav.hexasphere.map.TectonicPlate
+import com.sergeysav.hexasphere.map.Map
 import com.sergeysav.hexasphere.map.tile.Tile
 import org.joml.Matrix3f
 import org.joml.Matrix4f
@@ -44,7 +44,7 @@ class SimpleStereographicRenderer : Renderer {
         }
     }
     
-    override fun getMouseoverTile(x: Float, y: Float, tectonicPlates: Array<TectonicPlate>, model: Matrix4f,
+    override fun getMouseoverTile(x: Float, y: Float, map: Map, model: Matrix4f,
                                   cameraController: CameraController): Tile? {
         val scaling = cameraController.camera.position.length() - 1.175f
         
@@ -60,14 +60,12 @@ class SimpleStereographicRenderer : Renderer {
     
         var closest: Tile? = null
         var minDist2 = Float.MAX_VALUE
-        for ((plateNum, plate) in tectonicPlates.withIndex()) {
-            for (tile in plate.tiles) {
-                tile.getCenter(temp2V3)
-                val d2 = temp2V3.sub(tempV3).lengthSquared()
-                if (d2 < minDist2) {
-                    minDist2 = d2
-                    closest = tile
-                }
+        for (tile in map.tiles) {
+            tile.getCenter(temp2V3)
+            val d2 = temp2V3.sub(tempV3).lengthSquared()
+            if (d2 < minDist2) {
+                minDist2 = d2
+                closest = tile
             }
         }
         return closest

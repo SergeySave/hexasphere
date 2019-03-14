@@ -35,3 +35,15 @@ data class MapGenerationSettings(val size: Int, val plates: Int, val seed: Long,
                                                           aScaling = biomeAScale,
                                                           fScaling = biomeFScale)
 }
+
+fun MapGenerationSettings.generate(): Map {
+    val map = createBaseMap()
+    map.sortBy { tile -> tile.type.vertices }
+    val tectonicPlates = generateTectonicPlates(map)
+    var elevations = generateElevations(tectonicPlates)
+    elevations = erode(elevations)
+    val heat = generateHeat(map, elevations)
+    val moisture = generateMoisture(map)
+    val biomes = generateBiomes(map, elevations, heat, moisture)
+    return Map(map, tectonicPlates, elevations, heat, moisture, biomes)
+}
