@@ -1,6 +1,6 @@
-package com.sergeysav.hexasphere.map
+package com.sergeysav.hexasphere.map.gen
 
-import com.sergeysav.hexasphere.map.tile.Tile
+import com.sergeysav.hexasphere.map.Biome
 import org.joml.SimplexNoise
 import org.joml.Vector3f
 import java.util.LinkedList
@@ -18,7 +18,7 @@ import kotlin.random.Random
  */
 private val PHI = (1 + sqrt(5.0)) / 2.0
 
-fun MapGenerationSettings.createBaseMap(): Array<Tile> {
+fun MapGenerationSettings.createBaseMap(): Array<MapGenTile> {
     val faces = createIcosohedron()
     val vertices = splitIcos(size, faces)
     val vertexMap = vertices.groupBy(Vertex::center).mapValues { it.value[0] }
@@ -47,12 +47,12 @@ private fun Random.nextUnitVector(): Vector3f {
     return Vector3f((circleRadius * cos(theta)).toFloat(), (circleRadius * sin(theta)).toFloat(), z.toFloat())
 }
 
-private fun loosen(input: KMap<Tile, Int>): MutableMap<Tile, Int> {
+private fun loosen(input: Map<MapGenTile, Int>): MutableMap<MapGenTile, Int> {
     val vec1 = Vector3f()
     val vec2 = Vector3f()
     
-    val tPlates = mutableMapOf<Tile, Int>()
-    val queue: Queue<Tile> = LinkedList<Tile>()
+    val tPlates = mutableMapOf<MapGenTile, Int>()
+    val queue: Queue<MapGenTile> = LinkedList<MapGenTile>()
     input.entries.groupBy { it.value }.forEach {
         val plateTiles = it.value.asSequence().map { it.key }
         vec1.set(0f, 0f, 0f)
@@ -84,8 +84,8 @@ private fun loosen(input: KMap<Tile, Int>): MutableMap<Tile, Int> {
     return tPlates
 }
 
-fun MapGenerationSettings.generateTectonicPlates(map: Array<Tile>): Array<TectonicPlate> {
-    var tPlates = mutableMapOf<Tile, Int>()
+fun MapGenerationSettings.generateTectonicPlates(map: Array<MapGenTile>): Array<TectonicPlate> {
+    var tPlates = mutableMapOf<MapGenTile, Int>()
 
     for (i in 0 until plates) {
         var tileIndex: Int
@@ -122,7 +122,8 @@ fun MapGenerationSettings.generateTectonicPlates(map: Array<Tile>): Array<Tecton
                 } else {
                     -0.1f - height
                 }
-                TectonicPlate(plateTiles, random.nextUnitVector(), angle, landPlate, height)
+                TectonicPlate(plateTiles, random.nextUnitVector(), angle, landPlate,
+                                                               height)
             }.toTypedArray()
     
     val tilesToPlates = tectonicPlates.flatMap { it.tiles.map { tile -> tile to it } }
@@ -176,8 +177,8 @@ fun MapGenerationSettings.generateTectonicPlates(map: Array<Tile>): Array<Tecton
     return tectonicPlates
 }
 
-fun MapGenerationSettings.generateElevations(plates: Array<TectonicPlate>): KMap<Tile, Float> {
-    val elevations = mutableMapOf<Tile, Float>()
+fun MapGenerationSettings.generateElevations(plates: Array<TectonicPlate>): Map<MapGenTile, Float> {
+    val elevations = mutableMapOf<MapGenTile, Float>()
     val tilesToPlates = plates.flatMap { it.tiles.map { tile -> tile to it } }
             .groupBy { it.first }
             .mapValues { pair -> pair.value.map { it.second }.first() }
@@ -185,7 +186,7 @@ fun MapGenerationSettings.generateElevations(plates: Array<TectonicPlate>): KMap
     plates.map { plate -> plate.tiles.associateWith { plate.height } }.forEach { elevations.putAll(it) }
     
     for (plate in plates) {
-        val innerLWBAdj = mutableSetOf<Tile>()
+        val innerLWBAdj = mutableSetOf<MapGenTile>()
         for (tile in plate.boundaryTiles) {
             val pressure = plate.pressures[tile]!!
             // Adjacent tiles in other plates
@@ -229,7 +230,7 @@ fun MapGenerationSettings.generateElevations(plates: Array<TectonicPlate>): KMap
 //  repeat until no changes have been made:
 //   find tiles where min(adjacent elevation) < elevation
 //   for those tiles set elevation = min(adjacent elevation) + epsilon
-fun MapGenerationSettings.erode(elevations: KMap<Tile, Float>): KMap<Tile, Float> {
+fun MapGenerationSettings.erode(elevations: Map<MapGenTile, Float>): Map<MapGenTile, Float> {
     var elevation = elevations.mapValues { (_, value) ->
         if (value < seaLevel) {
             value
@@ -261,7 +262,7 @@ fun MapGenerationSettings.erode(elevations: KMap<Tile, Float>): KMap<Tile, Float
     return elevation
 }
 
-fun distributeElevations(elevations: KMap<Tile, Float>, random: Random, range: Float, scale: Float): KMap<Tile, Float> {
+fun distributeElevations(elevations: Map<MapGenTile, Float>, random: Random, range: Float, scale: Float): Map<MapGenTile, Float> {
     val temp = Vector3f()
     val seed = Float.fromBits(random.nextInt()) //random float
     return elevations.mapValues { (tile, elevation) ->
@@ -271,13 +272,13 @@ fun distributeElevations(elevations: KMap<Tile, Float>, random: Random, range: F
     }
 }
 
-fun MapGenerationSettings.generateHeat(map: Array<Tile>, elevations: KMap<Tile, Float>): KMap<Tile, Float> {
+fun MapGenerationSettings.generateHeat(map: Array<MapGenTile>, elevations: Map<MapGenTile, Float>): Map<MapGenTile, Float> {
     val tEquator = 1.0
     val tPole = 0.0
     val tLat = { cosTheta: Float -> (tEquator - tPole) * cosTheta + tPole}
     
     
-    val heat = mutableMapOf<Tile, Float>()
+    val heat = mutableMapOf<MapGenTile, Float>()
     
     val vec1 = Vector3f()
     map.forEach { tile ->
@@ -298,8 +299,8 @@ fun MapGenerationSettings.generateHeat(map: Array<Tile>, elevations: KMap<Tile, 
     return heat
 }
 
-fun MapGenerationSettings.generateMoisture(map: Array<Tile>): KMap<Tile, Float> {
-    val moisture = mutableMapOf<Tile, Float>()
+fun MapGenerationSettings.generateMoisture(map: Array<MapGenTile>): Map<MapGenTile, Float> {
+    val moisture = mutableMapOf<MapGenTile, Float>()
     val vec1 = Vector3f()
     
     map.forEach {
@@ -313,8 +314,8 @@ fun MapGenerationSettings.generateMoisture(map: Array<Tile>): KMap<Tile, Float> 
     return moisture
 }
 
-fun MapGenerationSettings.generateBiomes(map: Array<Tile>, elevations: KMap<Tile, Float>, temperatures: KMap<Tile,  Float>, moisture: KMap<Tile, Float>): KMap<Tile, Biome> {
-    val biomes = mutableMapOf<Tile, Biome>()
+fun MapGenerationSettings.generateBiomes(map: Array<MapGenTile>, elevations: Map<MapGenTile, Float>, temperatures: Map<MapGenTile,  Float>, moisture: Map<MapGenTile, Float>): Map<MapGenTile, Biome> {
+    val biomes = mutableMapOf<MapGenTile, Biome>()
     val vec = Vector3f()
     map.forEach {
         val h = elevations[it]!!
@@ -449,7 +450,7 @@ private fun splitIcos(size: Int, faces: Array<Face>): Set<Vertex> {
     return set
 }
 
-private fun getBaseTiles(faces: Array<Face>, vertices: Set<Vertex>): Sequence<Tile> {
+private fun getBaseTiles(faces: Array<Face>, vertices: Set<Vertex>): Sequence<MapGenTile> {
     val oneThird = 1f/3
     
     val pentagonalTiles = faces.asSequence()
@@ -461,11 +462,17 @@ private fun getBaseTiles(faces: Array<Face>, vertices: Set<Vertex>): Sequence<Ti
                 val c = firstMutualNeighbor(vertex, b, a)
                 val d = firstMutualNeighbor(vertex, c, b)
                 val e = firstMutualNeighbor(vertex, d, c)
-                Tile(vertex.center, arrayOf(Vector3f(a.center).add(b.center).add(vertex.center).mul(oneThird),
-                                            Vector3f(b.center).add(c.center).add(vertex.center).mul(oneThird),
-                                            Vector3f(c.center).add(d.center).add(vertex.center).mul(oneThird),
-                                            Vector3f(d.center).add(e.center).add(vertex.center).mul(oneThird),
-                                            Vector3f(e.center).add(a.center).add(vertex.center).mul(oneThird)))
+                MapGenTile(vertex.center, arrayOf(Vector3f(a.center).add(b.center).add(
+                        vertex.center).mul(oneThird),
+                                                                                   Vector3f(b.center).add(c.center).add(
+                                                                                           vertex.center).mul(oneThird),
+                                                                                   Vector3f(c.center).add(d.center).add(
+                                                                                           vertex.center).mul(oneThird),
+                                                                                   Vector3f(d.center).add(e.center).add(
+                                                                                           vertex.center).mul(oneThird),
+                                                                                   Vector3f(e.center).add(a.center).add(
+                                                                                           vertex.center).mul(
+                                                                                           oneThird)))
             }
     
     val hexagonalTiles = vertices.asSequence().filter { it.adjacent.size == 6 }
@@ -476,12 +483,19 @@ private fun getBaseTiles(faces: Array<Face>, vertices: Set<Vertex>): Sequence<Ti
                 val d = firstMutualNeighbor(vertex, c, b)
                 val e = firstMutualNeighbor(vertex, d, c)
                 val f = firstMutualNeighbor(vertex, e, d)
-                Tile(vertex.center, arrayOf(Vector3f(a.center).add(b.center).add(vertex.center).mul(oneThird),
-                                            Vector3f(b.center).add(c.center).add(vertex.center).mul(oneThird),
-                                            Vector3f(c.center).add(d.center).add(vertex.center).mul(oneThird),
-                                            Vector3f(d.center).add(e.center).add(vertex.center).mul(oneThird),
-                                            Vector3f(e.center).add(f.center).add(vertex.center).mul(oneThird),
-                                            Vector3f(f.center).add(a.center).add(vertex.center).mul(oneThird)))
+                MapGenTile(vertex.center, arrayOf(Vector3f(a.center).add(b.center).add(
+                        vertex.center).mul(oneThird),
+                                                                                   Vector3f(b.center).add(c.center).add(
+                                                                                           vertex.center).mul(oneThird),
+                                                                                   Vector3f(c.center).add(d.center).add(
+                                                                                           vertex.center).mul(oneThird),
+                                                                                   Vector3f(d.center).add(e.center).add(
+                                                                                           vertex.center).mul(oneThird),
+                                                                                   Vector3f(e.center).add(f.center).add(
+                                                                                           vertex.center).mul(oneThird),
+                                                                                   Vector3f(f.center).add(a.center).add(
+                                                                                           vertex.center).mul(
+                                                                                           oneThird)))
             }
     
     return sequenceOf(pentagonalTiles, hexagonalTiles).flatten()
@@ -495,7 +509,8 @@ private fun split(faces: Array<Face>, size: Int) {
             var last: Vertex = v1
             val path = mutableListOf<Vertex>()
             for (i in 0 until size) {
-                val new = Vertex(Vector3f(v1.center).lerp(v2.center, (i + 1) / (size + 1).toFloat()))
+                val new = Vertex(
+                        Vector3f(v1.center).lerp(v2.center, (i + 1) / (size + 1).toFloat()))
                 path.add(new)
                 connect(last, new)
                 last = new
@@ -514,7 +529,8 @@ private fun split(faces: Array<Face>, size: Int) {
             var last: Vertex = v1
             val path = mutableListOf<Vertex>()
             for (i in 0 until size) {
-                val new = Vertex(Vector3f(v1.center).lerp(v3.center, (i + 1) / (size + 1).toFloat()))
+                val new = Vertex(
+                        Vector3f(v1.center).lerp(v3.center, (i + 1) / (size + 1).toFloat()))
                 path.add(new)
                 connect(last, new)
                 last = new
@@ -533,7 +549,8 @@ private fun split(faces: Array<Face>, size: Int) {
             var last: Vertex = v2
             val path = mutableListOf<Vertex>()
             for (i in 0 until size) {
-                val new = Vertex(Vector3f(v2.center).lerp(v3.center, (i + 1) / (size + 1).toFloat()))
+                val new = Vertex(
+                        Vector3f(v2.center).lerp(v3.center, (i + 1) / (size + 1).toFloat()))
                 path.add(new)
                 connect(last, new)
                 last = new
@@ -559,7 +576,8 @@ private fun split(faces: Array<Face>, size: Int) {
             val thisOne = ArrayList<Vertex>()
             for (j in 0 until (size - i - 1)) {
                 connect(last, previous[j])
-                val new = Vertex(Vector3f(bottom.center).lerp(top.center, (j + 1) / (size - i).toFloat()))
+                val new = Vertex(
+                        Vector3f(bottom.center).lerp(top.center, (j + 1) / (size - i).toFloat()))
                 connect(last, new)
                 connect(new, previous[j])
                 thisOne.add(new)

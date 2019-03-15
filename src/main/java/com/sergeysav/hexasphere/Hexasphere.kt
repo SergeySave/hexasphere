@@ -6,12 +6,11 @@ import com.sergeysav.hexasphere.gl.GLDataUsage
 import com.sergeysav.hexasphere.gl.GLDrawingMode
 import com.sergeysav.hexasphere.gl.Mesh
 import com.sergeysav.hexasphere.gl.Vec3VertexAttribute
-import com.sergeysav.hexasphere.map.Map
-import com.sergeysav.hexasphere.map.MapGenerationSettings
-import com.sergeysav.hexasphere.map.generate
+import com.sergeysav.hexasphere.map.World
+import com.sergeysav.hexasphere.map.gen.MapGenerationSettings
+import com.sergeysav.hexasphere.map.gen.generate
 import mu.KotlinLogging
 import org.joml.Matrix4f
-import org.joml.Vector3f
 import org.lwjgl.glfw.GLFW
 import org.lwjgl.opengl.GL11
 
@@ -42,38 +41,36 @@ class Hexasphere : Application(800, 600) {
     lateinit var stereographicRenderer: SimpleStereographicRenderer
     
     val mapGenerationSettings = MapGenerationSettings(31, 30, 0L,
-                                                      8, 0.9f, 0.5f,
-                                                      0.2f, 5f, 1f,
-                                                      0f, 0.05f,
-                                                      8, 0.3f, 0.5f,
-                                                      8, 0.3f, 0.5f,
-                                                      2, 0.8f, 1.2f)
+                                                                                       8, 0.9f, 0.5f,
+                                                                                       0.2f, 5f, 1f,
+                                                                                       0f, 0.05f,
+                                                                                       8, 0.3f, 0.5f,
+                                                                                       8, 0.3f, 0.5f,
+                                                                                       2, 0.8f, 1.2f)
     
     val a = DoubleArray(1)
     val b = DoubleArray(1)
-    lateinit var map: Map
+    lateinit var map: World
     
     override fun create() {
         map = mapGenerationSettings.generate()
     
         vertices = FloatArray(6 * map.numVertices)
         indices = IntArray(3 * map.numTriangles)
-        
-        val verts = Array(6) { Vector3f() }
     
         map.apply {
             for (i in 0 until numPentagons) {
-                val num = tiles[i].tilePolygon.getVertices(verts)
+                val verts = tiles[i].tilePolygon.vertices
                 val biome = tiles[i].biome
-                for (j in 0 until num) {
-                    vertices[5 * 6 * i + 6 * j + 0] = verts[j].x
-                    vertices[5 * 6 * i + 6 * j + 1] = verts[j].y
-                    vertices[5 * 6 * i + 6 * j + 2] = verts[j].z
+                for (j in 0 until verts.size) {
+                    vertices[5 * 6 * i + 6 * j + 0] = verts[j].x()
+                    vertices[5 * 6 * i + 6 * j + 1] = verts[j].y()
+                    vertices[5 * 6 * i + 6 * j + 2] = verts[j].z()
                     vertices[5 * 6 * i + 6 * j + 3] = biome.r
                     vertices[5 * 6 * i + 6 * j + 4] = biome.g
                     vertices[5 * 6 * i + 6 * j + 5] = biome.b
                 }
-                for (j in 2 until num) {
+                for (j in 2 until verts.size) {
                     indices[(5 - 2) * 3 * i + 3 * (j - 2) + 0] = 5 * i
                     indices[(5 - 2) * 3 * i + 3 * (j - 2) + 1] = 5 * i + j - 1
                     indices[(5 - 2) * 3 * i + 3 * (j - 2) + 2] = 5 * i + j
@@ -82,17 +79,17 @@ class Hexasphere : Application(800, 600) {
             val hexVOffset = numPentagons * 5
             val hexIOffset = (5 - 2) * 3 * numPentagons
             for (i in 0 until numHexagons) {
-                val num = tiles[i + numPentagons].tilePolygon.getVertices(verts)
+                val verts = tiles[i + numPentagons].tilePolygon.vertices
                 val biome = tiles[i + numPentagons].biome
-                for (j in 0 until num) {
-                    vertices[6 * 6 * i + 6 * j + 0 + 6 * hexVOffset] = verts[j].x
-                    vertices[6 * 6 * i + 6 * j + 1 + 6 * hexVOffset] = verts[j].y
-                    vertices[6 * 6 * i + 6 * j + 2 + 6 * hexVOffset] = verts[j].z
+                for (j in 0 until verts.size) {
+                    vertices[6 * 6 * i + 6 * j + 0 + 6 * hexVOffset] = verts[j].x()
+                    vertices[6 * 6 * i + 6 * j + 1 + 6 * hexVOffset] = verts[j].y()
+                    vertices[6 * 6 * i + 6 * j + 2 + 6 * hexVOffset] = verts[j].z()
                     vertices[6 * 6 * i + 6 * j + 3 + 6 * hexVOffset] = biome.r
                     vertices[6 * 6 * i + 6 * j + 4 + 6 * hexVOffset] = biome.g
                     vertices[6 * 6 * i + 6 * j + 5 + 6 * hexVOffset] = biome.b
                 }
-                for (j in 2 until num) {
+                for (j in 2 until verts.size) {
                     indices[(6 - 2) * 3 * i + 3 * (j - 2) + 0 + hexIOffset] = 6 * i + hexVOffset
                     indices[(6 - 2) * 3 * i + 3 * (j - 2) + 1 + hexIOffset] = 6 * i + j - 1 + hexVOffset
                     indices[(6 - 2) * 3 * i + 3 * (j - 2) + 2 + hexIOffset] = 6 * i + j + hexVOffset

@@ -8,11 +8,11 @@ import org.joml.Vector3fc
  *
  * @constructor Creates a new TilePolygon
  */
-@Suppress("UNCHECKED_CAST")
-data class TilePolygon(private val center: Vector3fc, private val vertices: Array<Vector3fc>) {
+data class TilePolygon(val center: Vector3fc, val vertices: Array<Vector3fc>) {
     
-    val polygonType: TileType = TileType.values().first { it.vertices == vertices.size }
+    val polygonType: TilePolygonType = TilePolygonType.values().first { it.vertices == vertices.size }
     
+    @Suppress("UNCHECKED_CAST")
     constructor(center: Vector3fc, vertices: Array<Vector3f>): this(center, vertices as Array<Vector3fc>)
     
     override fun equals(other: Any?): Boolean {
@@ -29,16 +29,5 @@ data class TilePolygon(private val center: Vector3fc, private val vertices: Arra
         var result = center.hashCode()
         result = 31 * result + vertices.contentHashCode()
         return result
-    }
-    
-    fun getCenter(vec: Vector3f) {
-        vec.set(center)
-    }
-    
-    fun getVertices(store: Array<Vector3f>): Int {
-        for (i in 0 until polygonType.vertices) {
-            store[i].set(vertices[i])
-        }
-        return polygonType.vertices
     }
 }
