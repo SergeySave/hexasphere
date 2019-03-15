@@ -13,7 +13,7 @@ fun noiseGenerator(seed: Float, octaves: Int = 1, aScaling: Float = 0.5f, fScali
         var amp = 1f
         var freq = 1f
         for (i in 0 until octaves) {
-            total += amp * SimplexNoise.noise(pos.x() * freq, pos.y() * freq, pos.z() * freq, seed.toFloat())
+            total += amp * SimplexNoise.noise(pos.x() * freq, pos.y() * freq, pos.z() * freq, seed)
             amp *= aScaling
             freq *= fScaling
         }

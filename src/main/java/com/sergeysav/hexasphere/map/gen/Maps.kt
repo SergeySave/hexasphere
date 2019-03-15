@@ -30,11 +30,12 @@ fun MapGenerationSettings.createBaseMap(): Array<MapGenTile> {
         center
     }.mapValues { it.value[0] }
     
-    val temp = Vector3f()
-    tiles.forEach { tile ->
-        tile.getCenter(temp)
-        val vertex = vertexMap[temp]!!
-        tile.setAdjacent(vertex.adjacent.map { tileMap[it.center]!! }.toTypedArray())
+    linAlgPool.vec3 { temp ->
+        tiles.forEach { tile ->
+            tile.getCenter(temp)
+            val vertex = vertexMap[temp]!!
+            tile.setAdjacent(vertex.adjacent.map { tileMap[it.center]!! }.toTypedArray())
+        }
     }
     
     return tiles.toTypedArray()
@@ -47,42 +48,42 @@ private fun Random.nextUnitVector(): Vector3f {
     return Vector3f((circleRadius * cos(theta)).toFloat(), (circleRadius * sin(theta)).toFloat(), z.toFloat())
 }
 
-private fun loosen(input: Map<MapGenTile, Int>): MutableMap<MapGenTile, Int> {
-    val vec1 = Vector3f()
-    val vec2 = Vector3f()
-    
-    val tPlates = mutableMapOf<MapGenTile, Int>()
-    val queue: Queue<MapGenTile> = LinkedList<MapGenTile>()
-    input.entries.groupBy { it.value }.forEach {
-        val plateTiles = it.value.asSequence().map { it.key }
-        vec1.set(0f, 0f, 0f)
-        plateTiles.forEach { tile ->
-            tile.getCenter(vec2)
-            vec1.add(vec2)
-        }
-        vec1.mul(1f/it.value.size)
-        //Get the closest tile to the center (average)
-        val closest = plateTiles.minBy { tile ->
-            tile.getCenter(vec2)
-            vec2.sub(vec1).lengthSquared()
-        }!!
-        tPlates[closest] = it.key
-        queue.offer(closest)
-    }
-    
-    while (queue.isNotEmpty()) {
-        val tile = queue.poll()
-        val plate = tPlates[tile]!!
-        
-        for (adjacent in tile.adjacent) {
-            if (!tPlates.containsKey(adjacent)) {
-                tPlates[adjacent] = plate
-                queue.offer(adjacent)
+private fun MapGenerationSettings.loosen(input: Map<MapGenTile, Int>) =
+    linAlgPool.vec3 { vec1 ->
+        linAlgPool.vec3 { vec2 ->
+            val tPlates = mutableMapOf<MapGenTile, Int>()
+            val queue: Queue<MapGenTile> = LinkedList<MapGenTile>()
+            input.entries.groupBy { it.value }.forEach {
+                val plateTiles = it.value.asSequence().map { it.key }
+                vec1.set(0f, 0f, 0f)
+                plateTiles.forEach { tile ->
+                    tile.getCenter(vec2)
+                    vec1.add(vec2)
+                }
+                vec1.mul(1f/it.value.size)
+                //Get the closest tile to the center (average)
+                val closest = plateTiles.minBy { tile ->
+                    tile.getCenter(vec2)
+                    vec2.sub(vec1).lengthSquared()
+                }!!
+                tPlates[closest] = it.key
+                queue.offer(closest)
             }
+    
+            while (queue.isNotEmpty()) {
+                val tile = queue.poll()
+                val plate = tPlates[tile]!!
+        
+                for (adjacent in tile.adjacent) {
+                    if (!tPlates.containsKey(adjacent)) {
+                        tPlates[adjacent] = plate
+                        queue.offer(adjacent)
+                    }
+                }
+            }
+            tPlates
         }
     }
-    return tPlates
-}
 
 fun MapGenerationSettings.generateTectonicPlates(map: Array<MapGenTile>): Array<TectonicPlate> {
     var tPlates = mutableMapOf<MapGenTile, Int>()
@@ -101,76 +102,80 @@ fun MapGenerationSettings.generateTectonicPlates(map: Array<MapGenTile>): Array<
     }
     
     //Flip the tPlates variable around
-    val vec1 = Vector3f()
-    val vec2 = Vector3f()
-    val tectonicPlates = tPlates.entries.groupBy { it.value }
-            .map {
-                val angle = (random.nextFloat() * 2 * PI / 180).toFloat()
-//                val landPlate = isLand[it.key]
-                val plateTiles = it.value.map { it.key }.toSet()
-                vec2.zero()
-                plateTiles.forEach { tile ->
-                    tile.getCenter(vec1)
-                    vec2.add(vec1)
-                }
-                vec2.mul(1f/plateTiles.size)
-                val noiseVal = tectonicPlateHeightNoise(vec2)
-                val landPlate = noiseVal > 0
-                var height = noiseVal * 0.5f
-                height = if (landPlate) {
-                    0.1f + height
-                } else {
-                    -0.1f - height
-                }
-                TectonicPlate(plateTiles, random.nextUnitVector(), angle, landPlate,
-                                                               height)
-            }.toTypedArray()
+    val tectonicPlates = linAlgPool.vec3 { vec1 ->
+        linAlgPool.vec3 { vec2 ->
+            val tectonicPlates = tPlates.entries.groupBy { it.value }
+                    .map {
+                        val angle = (random.nextFloat() * 2 * PI / 180).toFloat()
+                        val plateTiles = it.value.map { it.key }.toSet()
+                        vec2.zero()
+                        plateTiles.forEach { tile ->
+                            tile.getCenter(vec1)
+                            vec2.add(vec1)
+                        }
+                        vec2.mul(1f/plateTiles.size)
+                        val noiseVal = tectonicPlateHeightNoise(vec2)
+                        val landPlate = noiseVal > 0
+                        var height = noiseVal * 0.5f
+                        height = if (landPlate) {
+                            0.1f + height
+                        } else {
+                            -0.1f - height
+                        }
+                        TectonicPlate(plateTiles, random.nextUnitVector(), angle, landPlate,
+                                      height)
+                    }.toTypedArray()
     
-    val tilesToPlates = tectonicPlates.flatMap { it.tiles.map { tile -> tile to it } }
-            .groupBy { it.first }
-            .mapValues { pair -> pair.value.map { it.second }.first() }
+            val tilesToPlates = tectonicPlates.flatMap { it.tiles.map { tile -> tile to it } }
+                    .groupBy { it.first }
+                    .mapValues { pair -> pair.value.map { it.second }.first() }
     
-    val vec3 = Vector3f()
-    val vec4 = Vector3f()
-    for (plate in tectonicPlates) {
-        plate.pressures = plate.boundaryTiles.associateWith {
-            it.getCenter(vec1)
-            it.getCenter(vec2)
-            //vec1 = desired position
-            vec1.rotateAxis(plate.angle, plate.rotationAxis.x, plate.rotationAxis.y, plate.rotationAxis.z)
-            //vec 1 = tile "velocity"
-            vec1.sub(vec2)
-            //adjacent tiles in other plates
-            it.adjacent.filter { other -> !plate.tiles.contains(other) }
-                    //get the pressure from each adjacent tile
-            .map { other ->
-                val otherPlate = tilesToPlates[other]!!
-                other.getCenter(vec3)
-                other.getCenter(vec4)
-                //vec3 = desired position
-                vec3.rotateAxis(otherPlate.angle, otherPlate.rotationAxis.x, otherPlate.rotationAxis.y,
-                                otherPlate.rotationAxis.z)
-                //vec3 = tile "velocity"
-                vec3.sub(vec4)
-
-                //vec3 = relative "velocity"
-                vec3.sub(vec1) //Difference in motions from other's point of view
-                
-                vec4.sub(vec2).normalize() //Direction vector towards original tile from other's point of view
-                vec3.dot(vec4) // relative "velocity" projected onto the vector pointing towards the original tile
-                //this returns an inward pressure
-            }.sum() // The total pressure exerted into this tile
-        }
+            linAlgPool.vec3 { vec3 ->
+                linAlgPool.vec3 { vec4 ->
+                    for (plate in tectonicPlates) {
+                        plate.pressures = plate.boundaryTiles.associateWith {
+                            it.getCenter(vec1)
+                            it.getCenter(vec2)
+                            //vec1 = desired position
+                            vec1.rotateAxis(plate.angle, plate.rotationAxis.x, plate.rotationAxis.y, plate.rotationAxis.z)
+                            //vec 1 = tile "velocity"
+                            vec1.sub(vec2)
+                            //adjacent tiles in other plates
+                            it.adjacent.filter { other -> !plate.tiles.contains(other) }
+                                    //get the pressure from each adjacent tile
+                                    .map { other ->
+                                        val otherPlate = tilesToPlates[other]!!
+                                        other.getCenter(vec3)
+                                        other.getCenter(vec4)
+                                        //vec3 = desired position
+                                        vec3.rotateAxis(otherPlate.angle, otherPlate.rotationAxis.x, otherPlate.rotationAxis.y,
+                                                        otherPlate.rotationAxis.z)
+                                        //vec3 = tile "velocity"
+                                        vec3.sub(vec4)
+                        
+                                        //vec3 = relative "velocity"
+                                        vec3.sub(vec1) //Difference in motions from other's point of view
+                        
+                                        vec4.sub(vec2).normalize() //Direction vector towards original tile from other's point of view
+                                        vec3.dot(vec4) // relative "velocity" projected onto the vector pointing towards the original tile
+                                        //this returns an inward pressure
+                                    }.sum() // The total pressure exerted into this tile
+                        }
         
-        //Basic smoothing to ensure that diagonal lines don't look really weird
-        plate.pressures = plate.pressures.mapValues { (tile, pressure) ->
-            pressure * 0.5f + tile.adjacent
-                    //adjacent boundary tiles in the same plate
-                    .filter { plate.boundaryTiles.contains(it) }
-                    //pressure of the other tile
-                    .map { plate.pressures[it]!! }
-                    //maximum adjacent boundary pressure
-                    .max()!!.toFloat() * 0.5f
+                        //Basic smoothing to ensure that diagonal lines don't look really weird
+                        plate.pressures = plate.pressures.mapValues { (tile, pressure) ->
+                            pressure * 0.5f + tile.adjacent
+                                    //adjacent boundary tiles in the same plate
+                                    .filter { plate.boundaryTiles.contains(it) }
+                                    //pressure of the other tile
+                                    .map { plate.pressures[it]!! }
+                                    //maximum adjacent boundary pressure
+                                    .max()!!.toFloat() * 0.5f
+                        }
+                    }
+                }
+            }
+            tectonicPlates
         }
     }
     
@@ -280,20 +285,21 @@ fun MapGenerationSettings.generateHeat(map: Array<MapGenTile>, elevations: Map<M
     
     val heat = mutableMapOf<MapGenTile, Float>()
     
-    val vec1 = Vector3f()
-    map.forEach { tile ->
-        tile.getCenter(vec1)
-        val dot = vec1.normalize().dot(0f, 1f, 0f)
-        //a.b = |a||b|cos(theta)
-    
-        //sin
-        // this is the sin compared to the top
-        val sin = sqrt(1 - dot * dot)
+    linAlgPool.vec3 { vec1 ->
+        map.forEach { tile ->
+            tile.getCenter(vec1)
+            val dot = vec1.normalize().dot(0f, 1f, 0f)
+            //a.b = |a||b|cos(theta)
         
-        tile.getCenter(vec1)
-        val height = elevations[tile]!!
+            //sin
+            // this is the sin compared to the top
+            val sin = sqrt(1 - dot * dot)
         
-        heat[tile] = tLat(sin).toFloat() + heatNoise(vec1)/12 - (if (height < 0) 0f else height/5)
+            tile.getCenter(vec1)
+            val height = elevations[tile]!!
+        
+            heat[tile] = tLat(sin).toFloat() + heatNoise(vec1)/12 - (if (height < 0) 0f else height/5)
+        }
     }
     
     return heat
@@ -301,14 +307,15 @@ fun MapGenerationSettings.generateHeat(map: Array<MapGenTile>, elevations: Map<M
 
 fun MapGenerationSettings.generateMoisture(map: Array<MapGenTile>): Map<MapGenTile, Float> {
     val moisture = mutableMapOf<MapGenTile, Float>()
-    val vec1 = Vector3f()
-    
-    map.forEach {
-        it.getCenter(vec1)
-        val dot = vec1.normalize().dot(0f, 1f, 0f)
-        val theta = asin(dot)
-        it.getCenter(vec1)
-        moisture[it] = ((1 / (1 + (4 * theta) * (4 * theta)) + 0.5 / (1 + (4 * (theta - PI / 4)) * (4 * (theta - PI / 4))) + 0.5 / (1 + (4 * (theta + PI / 4)) * (4 * (theta + PI / 4))) - 0.0763) / 1.0157).toFloat() + moistureNoise(vec1) / 6
+
+    linAlgPool.vec3 { vec1 ->
+        map.forEach {
+            it.getCenter(vec1)
+            val dot = vec1.normalize().dot(0f, 1f, 0f)
+            val theta = asin(dot)
+            it.getCenter(vec1)
+            moisture[it] = ((1 / (1 + (4 * theta) * (4 * theta)) + 0.5 / (1 + (4 * (theta - PI / 4)) * (4 * (theta - PI / 4))) + 0.5 / (1 + (4 * (theta + PI / 4)) * (4 * (theta + PI / 4))) - 0.0763) / 1.0157).toFloat() + moistureNoise(vec1) / 6
+        }
     }
     
     return moisture
@@ -316,43 +323,44 @@ fun MapGenerationSettings.generateMoisture(map: Array<MapGenTile>): Map<MapGenTi
 
 fun MapGenerationSettings.generateBiomes(map: Array<MapGenTile>, elevations: Map<MapGenTile, Float>, temperatures: Map<MapGenTile,  Float>, moisture: Map<MapGenTile, Float>): Map<MapGenTile, Biome> {
     val biomes = mutableMapOf<MapGenTile, Biome>()
-    val vec = Vector3f()
-    map.forEach {
-        val h = elevations[it]!!
-        val t = temperatures[it]!!
-        val m = moisture[it]!!
+    linAlgPool.vec3 { vec ->
+        map.forEach {
+            val h = elevations[it]!!
+            val t = temperatures[it]!!
+            val m = moisture[it]!!
         
-        it.getCenter(vec)
-        val n = biomeNoise(vec)
-//        println(n)
-        val smallerCount = it.adjacent.count { adj -> elevations[adj]!! <= h }.toDouble() / it.adjacent.size
-        val isCoastal = it.adjacent.any { adj -> elevations[adj]!! >= 0 }
-        val isCoastal_2 = it.adjacent.any { adj -> adj.adjacent.any { adj2 -> elevations[adj2]!! >= 0 } }
+            it.getCenter(vec)
+            val n = biomeNoise(vec)
+            //        println(n)
+            val smallerCount = it.adjacent.count { adj -> elevations[adj]!! <= h }.toDouble() / it.adjacent.size
+            val isCoastal = it.adjacent.any { adj -> elevations[adj]!! >= 0 }
+            val isCoastal_2 = it.adjacent.any { adj -> adj.adjacent.any { adj2 -> elevations[adj2]!! >= 0 } }
         
-        biomes[it] = if (h < 0) {
-            when {
-                t < 0.25 -> Biome.ICE
-                h > (-0.015 + n/15) || isCoastal || (isCoastal_2 && n > -0.15) -> Biome.COAST
-//                h < -0.025 -> Biome.OCEAN
-                else    -> Biome.OCEAN
-            }
-        } else if (smallerCount + n/2 + h < 1.4/4) {
-            Biome.MOUNTAIN
-        } else if (0.85 * t < m && t > 0.5) {
-            Biome.RAINFOREST
-        } else if (0.45 * t < m && t > 0.4) {
-            Biome.FOREST
-        } else if (0.35 * t < m) {
-            if (t > 0.5) {
-                Biome.DESERT
+            biomes[it] = if (h < 0) {
+                when {
+                    t < 0.25                                                         -> Biome.ICE
+                    h > (-0.015 + n / 15) || isCoastal || (isCoastal_2 && n > -0.15) -> Biome.COAST
+                    //                h < -0.025 -> Biome.OCEAN
+                    else                                                             -> Biome.OCEAN
+                }
+            } else if (smallerCount + n / 2 + h < 1.4 / 4) {
+                Biome.MOUNTAIN
+            } else if (0.85 * t < m && t > 0.5) {
+                Biome.RAINFOREST
+            } else if (0.45 * t < m && t > 0.4) {
+                Biome.FOREST
+            } else if (0.35 * t < m) {
+                if (t > 0.5) {
+                    Biome.DESERT
+                } else {
+                    Biome.TUNDRA
+                }
             } else {
-                Biome.TUNDRA
-            }
-        } else {
-            if (t > 0.4) {
-                Biome.SAVANNA
-            } else {
-                Biome.TAIGA
+                if (t > 0.4) {
+                    Biome.SAVANNA
+                } else {
+                    Biome.TAIGA
+                }
             }
         }
     }

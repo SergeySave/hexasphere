@@ -1,7 +1,7 @@
 package com.sergeysav.hexasphere.map
 
+import com.sergeysav.hexasphere.LinAlgPool
 import com.sergeysav.hexasphere.map.tile.Tile
-import org.joml.Vector3f
 import org.joml.Vector3fc
 
 /**
@@ -16,7 +16,7 @@ class World(val tiles: Array<Tile>) {
     val numTriangles = (5 - 2) * numPentagons + (6 - 2) * numHexagons
 }
 
-val V = Vector3f()
-fun World.getClosestTileTo(vec: Vector3fc) = tiles.minBy { tile ->
-    V.set(tile.tilePolygon.center).sub(vec).lengthSquared()
-}!!
+fun World.getClosestTileTo(vec: Vector3fc, linAlgPool: LinAlgPool) = linAlgPool.vec3 { tiles.minBy { tile ->
+        it.set(tile.tilePolygon.center).sub(vec).lengthSquared()
+    }!!
+}

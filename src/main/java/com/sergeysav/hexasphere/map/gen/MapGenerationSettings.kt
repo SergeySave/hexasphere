@@ -1,5 +1,6 @@
 package com.sergeysav.hexasphere.map.gen
 
+import com.sergeysav.hexasphere.LinAlgPool
 import com.sergeysav.hexasphere.map.World
 import com.sergeysav.hexasphere.map.tile.Tile
 import com.sergeysav.hexasphere.map.tile.TilePolygon
@@ -20,7 +21,7 @@ data class MapGenerationSettings(val size: Int, val plates: Int, val seed: Long,
                                  val heatOctaves: Int, val heatAScale: Float,
                                  val heatFScale: Float, val moistureOctaves: Int,
                                  val moistureAScale: Float, val moistureFScale: Float, val biomeOctaves: Int,
-                                 val biomeAScale: Float, val biomeFScale: Float) {
+                                 val biomeAScale: Float, val biomeFScale: Float, val linAlgPool: LinAlgPool) {
     val random: Random = Random(seed)
     val tectonicPlateHeightNoise: (Vector3fc) -> Float = noiseGenerator(random.nextFloat() * 1e4f,
                                                                         octaves = plateHeightOctaves,
@@ -52,7 +53,7 @@ fun MapGenerationSettings.generate(): World {
     return World(map.map { baseTile ->
         val v = Vector3f()
         baseTile.getCenter(v)
-        val verts = Array<Vector3f>(baseTile.type.vertices) { Vector3f() }
+        val verts = Array(baseTile.type.vertices) { Vector3f() }
         baseTile.getVertices(verts)
         Tile(TilePolygon(v, verts), elevations[baseTile]!!, heat[baseTile]!!, moisture[baseTile]!!, biomes[baseTile]!!)
     }.toTypedArray())

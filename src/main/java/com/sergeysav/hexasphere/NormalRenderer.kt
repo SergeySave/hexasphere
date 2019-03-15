@@ -8,8 +8,6 @@ import com.sergeysav.hexasphere.map.World
 import com.sergeysav.hexasphere.map.getClosestTileTo
 import com.sergeysav.hexasphere.map.tile.Tile
 import org.joml.Matrix4f
-import org.joml.Vector2f
-import org.joml.Vector3f
 import kotlin.math.min
 
 /**
@@ -17,9 +15,8 @@ import kotlin.math.min
  *
  * @constructor Creates a new NormalRenderer
  */
-class NormalRenderer : Renderer {
+class NormalRenderer(val linAlgPool: LinAlgPool) : Renderer {
     val shaderProgram = ShaderProgram()
-    private val v2 = Vector2f()
     
     init {
         shaderProgram.createVertexShader(loadResource("/vertex.glsl"))
@@ -37,23 +34,27 @@ class NormalRenderer : Renderer {
     
     override fun getMouseoverTile(x: Float, y: Float, map: World, model: Matrix4f,
                                   cameraController: CameraController): Tile? {
-        v2.set(x, y)
-        val ray = cameraController.projectToWorld(v2)
+        return linAlgPool.vec3 {ray ->
+            ray.set(linAlgPool.vec2 { cameraController.projectToWorld(it.set(x, y)) })
     
-        val radius = 1
-        val v3 = Vector3f()
-        val v = Vector3f()
-        model.getTranslation(v)
-        val part1 = -(ray.dot(v3.set(cameraController.camera.position).sub(v))).toDouble()
-        val det = part1*part1 - v3.set(cameraController.camera.position).sub(v).lengthSquared() + radius*radius
-        if (det >= 0) {
-            val part2 = Math.sqrt(det)
-            val dist = min(part1 - part2, part1 + part2)
-            v3.set(cameraController.camera.position).add(ray.mul(dist.toFloat()))
-    
-            return map.getClosestTileTo(v3)
+            val radius = 1
+            linAlgPool.vec3 { v3 ->
+                linAlgPool.vec3 { v ->
+                    model.getTranslation(v)
+                    val part1 = -(ray.dot(v3.set(cameraController.camera.position).sub(v))).toDouble()
+                    val det = part1*part1 - v3.set(cameraController.camera.position).sub(v).lengthSquared() + radius*radius
+                    if (det >= 0) {
+                        val part2 = Math.sqrt(det)
+                        val dist = min(part1 - part2, part1 + part2)
+                        v3.set(cameraController.camera.position).add(ray.mul(dist.toFloat()))
+                
+                        map.getClosestTileTo(v3, linAlgPool)
+                    } else {
+                        null
+                    }
+                }
+            }
         }
-        return null
     }
     
     override fun cleanup() {

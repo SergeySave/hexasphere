@@ -14,7 +14,6 @@ import org.joml.Matrix4f
 import org.lwjgl.glfw.GLFW
 import org.lwjgl.opengl.GL11
 
-
 /**
  * @author sergeys
  *
@@ -40,13 +39,14 @@ class Hexasphere : Application(800, 600) {
     lateinit var normalRenderer: NormalRenderer
     lateinit var stereographicRenderer: SimpleStereographicRenderer
     
+    val linAlgPool = LinAlgPool()
     val mapGenerationSettings = MapGenerationSettings(31, 30, 0L,
                                                                                        8, 0.9f, 0.5f,
                                                                                        0.2f, 5f, 1f,
                                                                                        0f, 0.05f,
                                                                                        8, 0.3f, 0.5f,
                                                                                        8, 0.3f, 0.5f,
-                                                                                       2, 0.8f, 1.2f)
+                                                                                       2, 0.8f, 1.2f, linAlgPool)
     
     val a = DoubleArray(1)
     val b = DoubleArray(1)
@@ -111,7 +111,7 @@ class Hexasphere : Application(800, 600) {
         GL11.glEnable(GL11.GL_DEPTH_TEST)
     
         cameraController = CameraController(Camera(Math.toRadians(45.0).toFloat(), width.toFloat() / height, 0.1f,
-                        100f))
+                        100f), linAlgPool)
         cameraController.setPos(2f, 0f, 0f)
         cameraController.lookAt(0f, 0f, 0f)
     
@@ -122,8 +122,8 @@ class Hexasphere : Application(800, 600) {
                          Vec3VertexAttribute("aColor"))
         
         mesh.bound {
-            normalRenderer = NormalRenderer()
-            stereographicRenderer = SimpleStereographicRenderer()
+            normalRenderer = NormalRenderer(linAlgPool)
+            stereographicRenderer = SimpleStereographicRenderer(linAlgPool)
         }
         renderer = normalRenderer
         
