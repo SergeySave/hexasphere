@@ -1,6 +1,9 @@
 package com.sergeysav.hexasphere.map
 
+import com.sergeysav.hexasphere.map.tile.FinishedTile
+import com.sergeysav.hexasphere.map.tile.TilePolygon
 import com.sergeysav.hexasphere.noiseGenerator
+import org.joml.Vector3f
 import org.joml.Vector3fc
 import kotlin.random.Random
 
@@ -45,5 +48,14 @@ fun MapGenerationSettings.generate(): Map {
     val heat = generateHeat(map, elevations)
     val moisture = generateMoisture(map)
     val biomes = generateBiomes(map, elevations, heat, moisture)
-    return Map(map, tectonicPlates, elevations, heat, moisture, biomes)
+    val tilesToPlates = tectonicPlates.flatMap { it.tiles.map { tile -> tile to it } }
+            .groupBy { it.first }
+            .mapValues { pair -> pair.value.map { it.second }.first() }
+    return Map(map.map { baseTile ->
+        val v = Vector3f()
+        baseTile.getCenter(v)
+        val verts = Array<Vector3f>(baseTile.type.vertices) { Vector3f() }
+        baseTile.getVertices(verts)
+        FinishedTile(TilePolygon(v, verts), tilesToPlates[baseTile]!!, elevations[baseTile]!!, heat[baseTile]!!, moisture[baseTile]!!, biomes[baseTile]!!)
+    }.toTypedArray())
 }

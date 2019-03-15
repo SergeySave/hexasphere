@@ -5,7 +5,7 @@ import com.sergeysav.hexasphere.gl.Mesh
 import com.sergeysav.hexasphere.gl.ShaderProgram
 import com.sergeysav.hexasphere.gl.bound
 import com.sergeysav.hexasphere.map.Map
-import com.sergeysav.hexasphere.map.tile.Tile
+import com.sergeysav.hexasphere.map.tile.FinishedTile
 import org.joml.Matrix3f
 import org.joml.Matrix4f
 import org.joml.Vector2f
@@ -45,7 +45,7 @@ class SimpleStereographicRenderer : Renderer {
     }
     
     override fun getMouseoverTile(x: Float, y: Float, map: Map, model: Matrix4f,
-                                  cameraController: CameraController): Tile? {
+                                  cameraController: CameraController): FinishedTile? {
         val scaling = cameraController.camera.position.length() - 1.175f
         
         // -y needed to work
@@ -58,10 +58,10 @@ class SimpleStereographicRenderer : Renderer {
         tempV4.set(tempV3.x, tempV3.y, tempV3.z, 1.0f).mul(mat4.invert()) // Rotate onto model
         tempV3.set(tempV4.x / tempV4.w, tempV4.y / tempV4.w, tempV4.z / tempV4.w)
     
-        var closest: Tile? = null
+        var closest: FinishedTile? = null
         var minDist2 = Float.MAX_VALUE
         for (tile in map.tiles) {
-            tile.getCenter(temp2V3)
+            tile.tilePolygon.getCenter(temp2V3)
             val d2 = temp2V3.sub(tempV3).lengthSquared()
             if (d2 < minDist2) {
                 minDist2 = d2

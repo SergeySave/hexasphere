@@ -3,7 +3,7 @@ package com.sergeysav.hexasphere
 import com.sergeysav.hexasphere.gl.Camera
 import com.sergeysav.hexasphere.gl.Mesh
 import com.sergeysav.hexasphere.map.Map
-import com.sergeysav.hexasphere.map.tile.Tile
+import com.sergeysav.hexasphere.map.tile.FinishedTile
 import org.joml.Matrix4f
 
 /**
@@ -11,6 +11,6 @@ import org.joml.Matrix4f
  */
 interface Renderer {
     fun render(mesh: Mesh, model: Matrix4f, camera: Camera)
-    fun getMouseoverTile(x: Float, y: Float, map: Map, model: Matrix4f, cameraController: CameraController): Tile?
+    fun getMouseoverTile(x: Float, y: Float, map: Map, model: Matrix4f, cameraController: CameraController): FinishedTile?
     fun cleanup()
 }

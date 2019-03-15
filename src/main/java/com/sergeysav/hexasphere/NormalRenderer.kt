@@ -5,7 +5,7 @@ import com.sergeysav.hexasphere.gl.Mesh
 import com.sergeysav.hexasphere.gl.ShaderProgram
 import com.sergeysav.hexasphere.gl.bound
 import com.sergeysav.hexasphere.map.Map
-import com.sergeysav.hexasphere.map.tile.Tile
+import com.sergeysav.hexasphere.map.tile.FinishedTile
 import org.joml.Matrix4f
 import org.joml.Vector2f
 import org.joml.Vector3f
@@ -35,7 +35,7 @@ class NormalRenderer : Renderer {
     }
     
     override fun getMouseoverTile(x: Float, y: Float, map: Map, model: Matrix4f,
-                                  cameraController: CameraController): Tile? {
+                                  cameraController: CameraController): FinishedTile? {
         v2.set(x, y)
         val ray = cameraController.projectToWorld(v2)
     
@@ -45,7 +45,7 @@ class NormalRenderer : Renderer {
         model.getTranslation(v)
         val part1 = -(ray.dot(v3.set(cameraController.camera.position).sub(v))).toDouble()
         val det = part1*part1 - v3.set(cameraController.camera.position).sub(v).lengthSquared() + radius*radius
-        var closest: Tile? = null
+        var closest: FinishedTile? = null
         if (det >= 0) {
             val part2 = Math.sqrt(det)
             val dist = min(part1 - part2, part1 + part2)
@@ -53,7 +53,7 @@ class NormalRenderer : Renderer {
     
             var minDist2 = Float.MAX_VALUE
             for (tile in map.tiles) {
-                tile.getCenter(v)
+                tile.tilePolygon.getCenter(v)
                 val d2 = v.sub(v3).lengthSquared()
                 if (d2 < minDist2) {
                     minDist2 = d2

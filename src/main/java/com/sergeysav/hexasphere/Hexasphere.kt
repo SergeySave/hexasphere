@@ -63,7 +63,7 @@ class Hexasphere : Application(800, 600) {
     
         map.apply {
             for (i in 0 until numPentagons) {
-                val num = tiles[i].getVertices(verts)
+                val num = tiles[i].tilePolygon.getVertices(verts)
                 val biome = tiles[i].biome
                 for (j in 0 until num) {
                     vertices[5 * 6 * i + 6 * j + 0] = verts[j].x
@@ -82,7 +82,7 @@ class Hexasphere : Application(800, 600) {
             val hexVOffset = numPentagons * 5
             val hexIOffset = (5 - 2) * 3 * numPentagons
             for (i in 0 until numHexagons) {
-                val num = tiles[i + numPentagons].getVertices(verts)
+                val num = tiles[i + numPentagons].tilePolygon.getVertices(verts)
                 val biome = tiles[i + numPentagons].biome
                 for (j in 0 until num) {
                     vertices[6 * 6 * i + 6 * j + 0 + 6 * hexVOffset] = verts[j].x
@@ -151,7 +151,7 @@ class Hexasphere : Application(800, 600) {
         map.apply {
             for (i in 0 until numPentagons) {
                 val biome = tiles[i].biome
-                for (j in 0 until tiles[i].type.vertices) {
+                for (j in 0 until tiles[i].tilePolygon.polygonType.vertices) {
                     if (mouseoverTile == tiles[i]) {
                         vertices[5 * 6 * i + 6 * j + 3] = 1.0f
                         vertices[5 * 6 * i + 6 * j + 4] = 0.0f
@@ -166,7 +166,7 @@ class Hexasphere : Application(800, 600) {
             val hexVOffset = numPentagons * 5
             for (i in 0 until numHexagons) {
                 val biome = tiles[i + numPentagons].biome
-                for (j in 0 until tiles[i + numPentagons].type.vertices) {
+                for (j in 0 until tiles[i + numPentagons].tilePolygon.polygonType.vertices) {
                     if (mouseoverTile == tiles[i + numPentagons]) {
                         vertices[6 * 6 * i + 6 * j + 3 + 6 * hexVOffset] = 1.0f
                         vertices[6 * 6 * i + 6 * j + 4 + 6 * hexVOffset] = 0.0f
