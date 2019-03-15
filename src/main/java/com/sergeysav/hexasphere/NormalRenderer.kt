@@ -1,13 +1,11 @@
 package com.sergeysav.hexasphere
 
 import com.sergeysav.hexasphere.gl.Camera
-import com.sergeysav.hexasphere.gl.Mesh
 import com.sergeysav.hexasphere.gl.ShaderProgram
 import com.sergeysav.hexasphere.gl.bound
-import com.sergeysav.hexasphere.map.World
+import com.sergeysav.hexasphere.map.WorldRenderable
 import com.sergeysav.hexasphere.map.getClosestTileTo
 import com.sergeysav.hexasphere.map.tile.Tile
-import org.joml.Matrix4f
 import kotlin.math.min
 
 /**
@@ -24,15 +22,15 @@ class NormalRenderer(val linAlgPool: LinAlgPool) : Renderer {
         shaderProgram.link()
     }
     
-    override fun render(mesh: Mesh, model: Matrix4f, camera: Camera) {
+    override fun render(worldRenderable: WorldRenderable, camera: Camera) {
         shaderProgram.bound {
             camera.combined.setUniform(shaderProgram.getUniform("uCamera"))
-            model.setUniform(shaderProgram.getUniform("uModel"))
-            mesh.draw()
+            worldRenderable.modelMatrix.setUniform(shaderProgram.getUniform("uModel"))
+            worldRenderable.mesh.draw()
         }
     }
     
-    override fun getMouseoverTile(x: Float, y: Float, map: World, model: Matrix4f,
+    override fun getMouseoverTile(x: Float, y: Float, map: WorldRenderable,
                                   cameraController: CameraController): Tile? {
         return linAlgPool.vec3 {ray ->
             ray.set(linAlgPool.vec2 { cameraController.projectToWorld(it.set(x, y)) })
@@ -40,7 +38,7 @@ class NormalRenderer(val linAlgPool: LinAlgPool) : Renderer {
             val radius = 1
             linAlgPool.vec3 { v3 ->
                 linAlgPool.vec3 { v ->
-                    model.getTranslation(v)
+                    map.modelMatrix.getTranslation(v)
                     val part1 = -(ray.dot(v3.set(cameraController.camera.position).sub(v))).toDouble()
                     val det = part1*part1 - v3.set(cameraController.camera.position).sub(v).lengthSquared() + radius*radius
                     if (det >= 0) {
@@ -48,7 +46,7 @@ class NormalRenderer(val linAlgPool: LinAlgPool) : Renderer {
                         val dist = min(part1 - part2, part1 + part2)
                         v3.set(cameraController.camera.position).add(ray.mul(dist.toFloat()))
                 
-                        map.getClosestTileTo(v3, linAlgPool)
+                        map.world.getClosestTileTo(v3, linAlgPool)
                     } else {
                         null
                     }

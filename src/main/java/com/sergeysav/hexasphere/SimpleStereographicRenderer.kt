@@ -1,13 +1,11 @@
 package com.sergeysav.hexasphere
 
 import com.sergeysav.hexasphere.gl.Camera
-import com.sergeysav.hexasphere.gl.Mesh
 import com.sergeysav.hexasphere.gl.ShaderProgram
 import com.sergeysav.hexasphere.gl.bound
-import com.sergeysav.hexasphere.map.World
+import com.sergeysav.hexasphere.map.WorldRenderable
 import com.sergeysav.hexasphere.map.getClosestTileTo
 import com.sergeysav.hexasphere.map.tile.Tile
-import org.joml.Matrix4f
 
 /**
  * @author sergeys
@@ -30,22 +28,22 @@ class SimpleStereographicRenderer(val linAlgPool: LinAlgPool) : Renderer {
         shaderProgram.link()
     }
     
-    override fun render(mesh: Mesh, model: Matrix4f, camera: Camera) {
+    override fun render(worldRenderable: WorldRenderable, camera: Camera) {
         shaderProgram.bound {
             val scaling = camera.position.length() - 1.175f
             linAlgPool.mat3 { mat3 ->
                 mat3.scaling(1 / scaling, 1 / scaling * camera.aspect, 1f)
                 mat3.setUniform(shaderProgram.getUniform("uCamera"))
                 linAlgPool.mat4 { mat4 ->
-                    mat4.set(mat3.set(camera.right, camera.up, camera.direction).transpose()).mul(model)
+                    mat4.set(mat3.set(camera.right, camera.up, camera.direction).transpose()).mul(worldRenderable.modelMatrix)
                     mat4.setUniform(shaderProgram.getUniform("uModel"))
                 }
             }
-            mesh.draw()
+            worldRenderable.mesh.draw()
         }
     }
     
-    override fun getMouseoverTile(x: Float, y: Float, map: World, model: Matrix4f,
+    override fun getMouseoverTile(x: Float, y: Float, map: WorldRenderable,
                                   cameraController: CameraController): Tile? {
         val scaling = cameraController.camera.position.length() - 1.175f
         
@@ -63,13 +61,13 @@ class SimpleStereographicRenderer(val linAlgPool: LinAlgPool) : Renderer {
                     linAlgPool.mat3 { mat3 ->
                         rotationMatrix.set(mat3.set(cameraController.camera.right, cameraController.camera.up,
                                           cameraController.camera.direction).transpose())
-                                .mul(model) // Model rotation matrix
+                                .mul(map.modelMatrix) // Model rotation matrix
                     }
                     tempV4.set(tempV3.x, tempV3.y, tempV3.z, 1.0f).mul(rotationMatrix.invert()) // Rotate onto model
                 }
                 tempV3.set(tempV4.x / tempV4.w, tempV4.y / tempV4.w, tempV4.z / tempV4.w)
             }
-            map.getClosestTileTo(tempV3, linAlgPool)
+            map.world.getClosestTileTo(tempV3, linAlgPool)
         }
     }
     

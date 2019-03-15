@@ -19,10 +19,12 @@ class Mesh(private var glDrawingMode: GLDrawingMode, private val useIBOs: Boolea
     private val ibo = ElementBufferObject(if (useIBOs) GL15.glGenBuffers() else 0) // 0 = null
     private var vertexCount = 0
     private var indexCount = 0
+    private lateinit var vertexGLDataUsage: GLDataUsage
     
     fun setVertices(data: FloatArray, dataUsage: GLDataUsage, vararg attributes: VertexAttribute) {
         val stride = attributes.map(VertexAttribute::totalLength).sum()
         vertexCount = data.size/attributes.map(VertexAttribute::components).sum()
+        vertexGLDataUsage = dataUsage
         
         vao.bound {
             vbo.bind()
@@ -37,10 +39,10 @@ class Mesh(private var glDrawingMode: GLDrawingMode, private val useIBOs: Boolea
         }
     }
     
-    fun setVertexData(data: FloatArray, dataUsage: GLDataUsage) {
+    fun setVertexData(data: FloatArray) {
         vao.bound {
             vbo.bind()
-            vbo.setData(data, dataUsage)
+            vbo.setData(data, vertexGLDataUsage)
         }
     }
     
