@@ -1,4 +1,4 @@
-package com.sergeysav.hexasphere.map
+package com.sergeysav.hexasphere.map.gen
 
 /**
  * @author sergeys

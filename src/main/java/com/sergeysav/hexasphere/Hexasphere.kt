@@ -30,12 +30,12 @@ class Hexasphere : Application(800, 600) {
     
     val linAlgPool = LinAlgPool()
     val mapGenerationSettings = MapGenerationSettings(31, 30, 0L,
-                                                                                       8, 0.9f, 0.5f,
-                                                                                       0.2f, 5f, 1f,
-                                                                                       0f, 0.05f,
-                                                                                       8, 0.3f, 0.5f,
-                                                                                       8, 0.3f, 0.5f,
-                                                                                       2, 0.8f, 1.2f, linAlgPool)
+                                                      8, 0.9f, 0.5f,
+                                                      0.2f, 5f, 1f,
+                                                      0f, 0.05f,
+                                                      8, 0.3f, 0.5f,
+                                                      8, 0.3f, 0.5f,
+                                                      2, 0.8f, 1.2f, linAlgPool)
     
     val a = DoubleArray(1)
     val b = DoubleArray(1)

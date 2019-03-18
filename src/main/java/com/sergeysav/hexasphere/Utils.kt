@@ -8,6 +8,7 @@ import org.joml.Vector3fc
 import org.lwjgl.opengl.GL20
 import org.lwjgl.system.MemoryStack
 import java.util.Scanner
+import kotlin.random.Random
 
 /**
  * @author sergeys
@@ -38,5 +39,7 @@ fun Matrix4f.setUniform(uniformId: Int) {
         GL20.glUniformMatrix4fv(uniformId, false, fb)
     }
 }
+
+fun Random.chance(p: Double) = this.nextDouble() <= p
 
 val ZERO: Vector3fc = Vector3f(0f, 0f, 0f)

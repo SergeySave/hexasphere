@@ -1,6 +1,9 @@
 package com.sergeysav.hexasphere.map.gen
 
-import com.sergeysav.hexasphere.map.Biome
+import com.sergeysav.hexasphere.chance
+import com.sergeysav.hexasphere.map.tile.terrain.TerrainMajorFeature
+import com.sergeysav.hexasphere.map.tile.terrain.TerrainShape
+import com.sergeysav.hexasphere.map.tile.terrain.TerrainType
 import org.joml.SimplexNoise
 import org.joml.Vector3f
 import java.util.LinkedList
@@ -365,6 +368,62 @@ fun MapGenerationSettings.generateBiomes(map: Array<MapGenTile>, elevations: Map
         }
     }
     return biomes
+}
+
+fun MapGenerationSettings.generateTerrain(map: Array<MapGenTile>, elevations: Map<MapGenTile, Float>, temperatures: Map<MapGenTile,  Float>, moisture: Map<MapGenTile, Float>): Map<MapGenTile, GenTerrain> {
+    val terrain = mutableMapOf<MapGenTile, GenTerrain>()
+    linAlgPool.vec3 { vec ->
+        map.forEach {
+            val h = elevations[it]!!
+            val t = temperatures[it]!!
+            val m = moisture[it]!!
+            
+            it.getCenter(vec)
+            val n = biomeNoise(vec)
+            //        println(n)
+            val smallerCount = it.adjacent.count { adj -> elevations[adj]!! <= h }.toDouble() / it.adjacent.size
+            val isCoastal = it.adjacent.any { adj -> elevations[adj]!! >= 0 }
+            val isCoastal_2 = it.adjacent.any { adj -> adj.adjacent.any { adj2 -> elevations[adj2]!! >= 0 } }
+            
+            terrain[it] = if (h < 0) {
+                when {
+                    t < 0.25                                                         -> GenTerrain(Biome.ICE, TerrainType.WaterTerrainType, TerrainShape.IceTerrainShape, TerrainMajorFeature.NoMajorFeature, arrayOf())
+                    h > (-0.015 + n / 15) || isCoastal || (isCoastal_2 && n > -0.15) -> GenTerrain(Biome.COAST, TerrainType.WaterTerrainType, TerrainShape.CoastTerrainShape, TerrainMajorFeature.NoMajorFeature, arrayOf())
+                    //                h < -0.025 -> Biome.OCEAN
+                    else                                                             -> GenTerrain(Biome.OCEAN, TerrainType.WaterTerrainType, TerrainShape.OceanTerrainShape, TerrainMajorFeature.NoMajorFeature, arrayOf())
+                }
+            } else if (smallerCount + n / 2 + h < 1.4 / 4) {
+                // Can be any Land Type
+                GenTerrain(Biome.MOUNTAIN, TerrainType.GrassTerrainType, TerrainShape.MountainTerrainShape, TerrainMajorFeature.NoMajorFeature, arrayOf())
+            } else if (0.85 * t < m && t > 0.5) {
+                when {
+                    random.chance(1/5.0)  -> GenTerrain(Biome.RAINFOREST, TerrainType.GrassTerrainType, TerrainShape.HillTerrainShape, TerrainMajorFeature.NoMajorFeature, arrayOf())
+                    random.chance(1/4.0) -> GenTerrain(Biome.RAINFOREST, TerrainType.GrassTerrainType, TerrainShape.FlatTerrainShape, TerrainMajorFeature.NoMajorFeature, arrayOf())
+                    else                 -> GenTerrain(Biome.RAINFOREST, TerrainType.GrassTerrainType, TerrainShape.FlatTerrainShape, TerrainMajorFeature.RainforestMajorFeature, arrayOf())
+                }
+            } else if (0.45 * t < m && t > 0.4) {
+                // Can be any Land Type
+                when {
+                    random.chance(1/5.0)  -> GenTerrain(Biome.FOREST, TerrainType.GrassTerrainType, TerrainShape.HillTerrainShape, TerrainMajorFeature.NoMajorFeature, arrayOf())
+                    random.chance(1/4.0) -> GenTerrain(Biome.FOREST, TerrainType.GrassTerrainType, TerrainShape.FlatTerrainShape, TerrainMajorFeature.NoMajorFeature, arrayOf())
+                    else                 -> GenTerrain(Biome.FOREST, TerrainType.GrassTerrainType, TerrainShape.FlatTerrainShape, TerrainMajorFeature.ForestMajorFeature, arrayOf())
+                }
+            } else if (0.35 * t < m) {
+                if (t > 0.5) {
+                    GenTerrain(Biome.DESERT, TerrainType.SandTerrainType, if (random.chance(0.5)) { TerrainShape.FlatTerrainShape } else { TerrainShape.HillTerrainShape }, TerrainMajorFeature.NoMajorFeature, arrayOf())
+                } else {
+                    GenTerrain(Biome.TUNDRA, TerrainType.PermafrostTerrainType, if (random.chance(0.5)) { TerrainShape.FlatTerrainShape } else { TerrainShape.HillTerrainShape }, TerrainMajorFeature.NoMajorFeature, arrayOf())
+                }
+            } else {
+                if (t > 0.4) {
+                    GenTerrain(Biome.SAVANNA, TerrainType.SandTerrainType, TerrainShape.FlatTerrainShape, TerrainMajorFeature.ForestMajorFeature, arrayOf())
+                } else {
+                    GenTerrain(Biome.TAIGA, TerrainType.PermafrostTerrainType, TerrainShape.FlatTerrainShape, TerrainMajorFeature.ForestMajorFeature, arrayOf())
+                }
+            }
+        }
+    }
+    return terrain
 }
 
 private fun getIcosVertices(): Array<Vertex> {

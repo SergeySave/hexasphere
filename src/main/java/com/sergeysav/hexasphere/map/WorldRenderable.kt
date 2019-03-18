@@ -19,14 +19,15 @@ data class WorldRenderable(val world: World, val modelMatrix: Matrix4f, val mesh
         world.apply {
             for (i in 0 until numPentagons) {
                 val verts = tiles[i].tilePolygon.vertices
-                val biome = tiles[i].biome
+//                val biome = tiles[i].biome
+                val (r, g, b) = tiles[i].determineColor()
                 for (j in 0 until verts.size) {
                     vertices[5 * 6 * i + 6 * j + 0] = verts[j].x()
                     vertices[5 * 6 * i + 6 * j + 1] = verts[j].y()
                     vertices[5 * 6 * i + 6 * j + 2] = verts[j].z()
-                    vertices[5 * 6 * i + 6 * j + 3] = biome.r
-                    vertices[5 * 6 * i + 6 * j + 4] = biome.g
-                    vertices[5 * 6 * i + 6 * j + 5] = biome.b
+                    vertices[5 * 6 * i + 6 * j + 3] = r
+                    vertices[5 * 6 * i + 6 * j + 4] = g
+                    vertices[5 * 6 * i + 6 * j + 5] = b
                 }
                 for (j in 2 until verts.size) {
                     indices[(5 - 2) * 3 * i + 3 * (j - 2) + 0] = 5 * i
@@ -38,14 +39,15 @@ data class WorldRenderable(val world: World, val modelMatrix: Matrix4f, val mesh
             val hexIOffset = (5 - 2) * 3 * numPentagons
             for (i in 0 until numHexagons) {
                 val verts = tiles[i + numPentagons].tilePolygon.vertices
-                val biome = tiles[i + numPentagons].biome
+//                val biome = tiles[i + numPentagons].biome
+                val (r, g, b) = tiles[i + numPentagons].determineColor()
                 for (j in 0 until verts.size) {
                     vertices[6 * 6 * i + 6 * j + 0 + 6 * hexVOffset] = verts[j].x()
                     vertices[6 * 6 * i + 6 * j + 1 + 6 * hexVOffset] = verts[j].y()
                     vertices[6 * 6 * i + 6 * j + 2 + 6 * hexVOffset] = verts[j].z()
-                    vertices[6 * 6 * i + 6 * j + 3 + 6 * hexVOffset] = biome.r
-                    vertices[6 * 6 * i + 6 * j + 4 + 6 * hexVOffset] = biome.g
-                    vertices[6 * 6 * i + 6 * j + 5 + 6 * hexVOffset] = biome.b
+                    vertices[6 * 6 * i + 6 * j + 3 + 6 * hexVOffset] = r
+                    vertices[6 * 6 * i + 6 * j + 4 + 6 * hexVOffset] = g
+                    vertices[6 * 6 * i + 6 * j + 5 + 6 * hexVOffset] = b
                 }
                 for (j in 2 until verts.size) {
                     indices[(6 - 2) * 3 * i + 3 * (j - 2) + 0 + hexIOffset] = 6 * i + hexVOffset
@@ -67,31 +69,33 @@ data class WorldRenderable(val world: World, val modelMatrix: Matrix4f, val mesh
     fun updateMesh(mouseoverTile: Tile?) {
         world.apply {
             for (i in 0 until numPentagons) {
-                val biome = tiles[i].biome
+//                val biome = tiles[i].biome
+                val (r, g, b) = tiles[i].determineColor()
                 for (j in 0 until tiles[i].tilePolygon.polygonType.vertices) {
                     if (mouseoverTile == tiles[i]) {
                         vertices[5 * 6 * i + 6 * j + 3] = 1.0f
                         vertices[5 * 6 * i + 6 * j + 4] = 0.0f
                         vertices[5 * 6 * i + 6 * j + 5] = 0.0f
                     } else {
-                        vertices[5 * 6 * i + 6 * j + 3] = biome.r
-                        vertices[5 * 6 * i + 6 * j + 4] = biome.g
-                        vertices[5 * 6 * i + 6 * j + 5] = biome.b
+                        vertices[5 * 6 * i + 6 * j + 3] = r
+                        vertices[5 * 6 * i + 6 * j + 4] = g
+                        vertices[5 * 6 * i + 6 * j + 5] = b
                     }
                 }
             }
             val hexVOffset = numPentagons * 5
             for (i in 0 until numHexagons) {
-                val biome = tiles[i + numPentagons].biome
+//                val biome = tiles[i + numPentagons].biome
+                val (r, g, b) = tiles[i + numPentagons].determineColor()
                 for (j in 0 until tiles[i + numPentagons].tilePolygon.polygonType.vertices) {
                     if (mouseoverTile == tiles[i + numPentagons]) {
                         vertices[6 * 6 * i + 6 * j + 3 + 6 * hexVOffset] = 1.0f
                         vertices[6 * 6 * i + 6 * j + 4 + 6 * hexVOffset] = 0.0f
                         vertices[6 * 6 * i + 6 * j + 5 + 6 * hexVOffset] = 0.0f
                     } else {
-                        vertices[6 * 6 * i + 6 * j + 3 + 6 * hexVOffset] = biome.r
-                        vertices[6 * 6 * i + 6 * j + 4 + 6 * hexVOffset] = biome.g
-                        vertices[6 * 6 * i + 6 * j + 5 + 6 * hexVOffset] = biome.b
+                        vertices[6 * 6 * i + 6 * j + 3 + 6 * hexVOffset] = r
+                        vertices[6 * 6 * i + 6 * j + 4 + 6 * hexVOffset] = g
+                        vertices[6 * 6 * i + 6 * j + 5 + 6 * hexVOffset] = b
                     }
                 }
             }

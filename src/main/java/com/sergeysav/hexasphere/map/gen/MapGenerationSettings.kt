@@ -49,12 +49,14 @@ fun MapGenerationSettings.generate(): World {
     elevations = erode(elevations)
     val heat = generateHeat(map, elevations)
     val moisture = generateMoisture(map)
-    val biomes = generateBiomes(map, elevations, heat, moisture)
+//    val biomes = generateBiomes(map, elevations, heat, moisture)
+    val terrain = generateTerrain(map, elevations, heat, moisture)
     return World(map.map { baseTile ->
         val v = Vector3f()
         baseTile.getCenter(v)
         val verts = Array(baseTile.type.vertices) { Vector3f() }
         baseTile.getVertices(verts)
-        Tile(TilePolygon(v, verts), elevations[baseTile]!!, heat[baseTile]!!, moisture[baseTile]!!, biomes[baseTile]!!)
+        val terr = terrain[baseTile]!!
+        Tile(TilePolygon(v, verts), elevations[baseTile]!!, heat[baseTile]!!, moisture[baseTile]!!, terr.type, terr.shape, terr.majorFeature, terr.minorFeatures)
     }.toTypedArray())
 }
