@@ -3,7 +3,11 @@ package com.sergeysav.hexasphere
 import com.sergeysav.hexasphere.gl.Application
 import com.sergeysav.hexasphere.gl.Camera
 import com.sergeysav.hexasphere.gl.GLDrawingMode
+import com.sergeysav.hexasphere.gl.Image
 import com.sergeysav.hexasphere.gl.Mesh
+import com.sergeysav.hexasphere.gl.Texture2D
+import com.sergeysav.hexasphere.gl.cleanup
+import com.sergeysav.hexasphere.gl.createTexture
 import com.sergeysav.hexasphere.map.WorldRenderable
 import com.sergeysav.hexasphere.map.gen.MapGenerationSettings
 import com.sergeysav.hexasphere.map.gen.generate
@@ -41,6 +45,7 @@ class Hexasphere : Application(800, 600) {
     val b = DoubleArray(1)
     val world = mapGenerationSettings.generate()
     lateinit var worldRenderable: WorldRenderable
+    var texture: Texture2D = Texture2D(0)
     
     override fun create() {}
     
@@ -61,8 +66,10 @@ class Hexasphere : Application(800, 600) {
     
         log.info { "Creating Mesh" }
         val mesh = Mesh(GLDrawingMode.TRIANGLES, true)
-    
-        worldRenderable = WorldRenderable(world, Matrix4f(), mesh)
+        
+        texture = Image.createTexture(getResourcePath("/shapes/together.png"),GL11.GL_RGB, GL11.GL_RGB, generateMipmaps = true)
+        
+        worldRenderable = WorldRenderable(world, Matrix4f(), mesh, texture)
         
         worldRenderable.prepareMesh {
             normalRenderer = NormalRenderer(linAlgPool)
@@ -117,6 +124,7 @@ class Hexasphere : Application(800, 600) {
         stereographicRenderer.cleanup()
         normalRenderer.cleanup()
         worldRenderable.mesh.cleanup()
+        texture.cleanup()
     }
     
     override fun onKeyPress(key: Int, scancode: Int, action: Int, mods: Int) {

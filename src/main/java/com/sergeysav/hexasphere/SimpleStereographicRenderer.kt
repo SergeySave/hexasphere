@@ -6,6 +6,7 @@ import com.sergeysav.hexasphere.gl.bound
 import com.sergeysav.hexasphere.map.WorldRenderable
 import com.sergeysav.hexasphere.map.getClosestTileTo
 import com.sergeysav.hexasphere.map.tile.Tile
+import org.lwjgl.opengl.GL20
 
 /**
  * @author sergeys
@@ -26,20 +27,24 @@ class SimpleStereographicRenderer(val linAlgPool: LinAlgPool) : Renderer {
         shaderProgram.createVertexShader(loadResource("/stereographic_simple.vertex.glsl"))
         shaderProgram.createFragmentShader(loadResource("/fragment.glsl"))
         shaderProgram.link()
+    
+        GL20.glUniform1i(shaderProgram.getUniform("texture1"), 0)
     }
     
     override fun render(worldRenderable: WorldRenderable, camera: Camera) {
-        shaderProgram.bound {
-            val scaling = camera.position.length() - 1.175f
-            linAlgPool.mat3 { mat3 ->
-                mat3.scaling(1 / scaling, 1 / scaling * camera.aspect, 1f)
-                mat3.setUniform(shaderProgram.getUniform("uCamera"))
-                linAlgPool.mat4 { mat4 ->
-                    mat4.set(mat3.set(camera.right, camera.up, camera.direction).transpose()).mul(worldRenderable.modelMatrix)
-                    mat4.setUniform(shaderProgram.getUniform("uModel"))
+        worldRenderable.texture.bound {
+            shaderProgram.bound {
+                val scaling = camera.position.length() - 1.175f
+                linAlgPool.mat3 { mat3 ->
+                    mat3.scaling(1 / scaling, 1 / scaling * camera.aspect, 1f)
+                    mat3.setUniform(shaderProgram.getUniform("uCamera"))
+                    linAlgPool.mat4 { mat4 ->
+                        mat4.set(mat3.set(camera.right, camera.up, camera.direction).transpose()).mul(worldRenderable.modelMatrix)
+                        mat4.setUniform(shaderProgram.getUniform("uModel"))
+                    }
                 }
+                worldRenderable.mesh.draw()
             }
-            worldRenderable.mesh.draw()
         }
     }
     

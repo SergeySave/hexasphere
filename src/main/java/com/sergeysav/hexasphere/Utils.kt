@@ -7,6 +7,7 @@ import org.joml.Vector3f
 import org.joml.Vector3fc
 import org.lwjgl.opengl.GL20
 import org.lwjgl.system.MemoryStack
+import java.io.File
 import java.util.Scanner
 import kotlin.random.Random
 
@@ -21,6 +22,8 @@ fun loadResource(fileName: String): String {
         }
     }
 }
+
+fun getResourcePath(fileName: String): String = File(Application::class.java.getResource(fileName).toURI()).absolutePath
 
 fun Matrix3f.setUniform(uniformId: Int) {
     MemoryStack.stackPush().use { stack ->

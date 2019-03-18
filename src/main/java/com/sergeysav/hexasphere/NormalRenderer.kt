@@ -6,6 +6,7 @@ import com.sergeysav.hexasphere.gl.bound
 import com.sergeysav.hexasphere.map.WorldRenderable
 import com.sergeysav.hexasphere.map.getClosestTileTo
 import com.sergeysav.hexasphere.map.tile.Tile
+import org.lwjgl.opengl.GL20
 import kotlin.math.min
 
 /**
@@ -20,13 +21,17 @@ class NormalRenderer(val linAlgPool: LinAlgPool) : Renderer {
         shaderProgram.createVertexShader(loadResource("/vertex.glsl"))
         shaderProgram.createFragmentShader(loadResource("/fragment.glsl"))
         shaderProgram.link()
+        
+        GL20.glUniform1i(shaderProgram.getUniform("texture1"), 0)
     }
     
     override fun render(worldRenderable: WorldRenderable, camera: Camera) {
-        shaderProgram.bound {
-            camera.combined.setUniform(shaderProgram.getUniform("uCamera"))
-            worldRenderable.modelMatrix.setUniform(shaderProgram.getUniform("uModel"))
-            worldRenderable.mesh.draw()
+        worldRenderable.texture.bound {
+            shaderProgram.bound {
+                camera.combined.setUniform(shaderProgram.getUniform("uCamera"))
+                worldRenderable.modelMatrix.setUniform(shaderProgram.getUniform("uModel"))
+                worldRenderable.mesh.draw()
+            }
         }
     }
     

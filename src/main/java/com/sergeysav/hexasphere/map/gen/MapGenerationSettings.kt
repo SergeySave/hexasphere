@@ -41,6 +41,8 @@ data class MapGenerationSettings(val size: Int, val plates: Int, val seed: Long,
                                                           fScaling = biomeFScale)
 }
 
+private val PRIMARY_ORIENTATION: Vector3fc = Vector3f(0f, 1f, 0f)
+
 fun MapGenerationSettings.generate(): World {
     val map = createBaseMap()
     map.sortBy { tile -> tile.type.vertices }
@@ -56,7 +58,18 @@ fun MapGenerationSettings.generate(): World {
         baseTile.getCenter(v)
         val verts = Array(baseTile.type.vertices) { Vector3f() }
         baseTile.getVertices(verts)
+        
+        var value = PRIMARY_ORIENTATION.dot(verts[0]) // as primary orientation is a unit vector, this is a projection onto it
+        var index = 0
+        for (i in 1 until verts.size) {
+            val thisVal = PRIMARY_ORIENTATION.dot(verts[i])
+            if (thisVal > value) {
+                value = thisVal
+                index = i
+            }
+        }
+        
         val terr = terrain[baseTile]!!
-        Tile(TilePolygon(v, verts), elevations[baseTile]!!, heat[baseTile]!!, moisture[baseTile]!!, terr.type, terr.shape, terr.majorFeature, terr.minorFeatures)
+        Tile(TilePolygon(v, Array<Vector3fc>(verts.size) {verts[(it + index) % verts.size]}), elevations[baseTile]!!, heat[baseTile]!!, moisture[baseTile]!!, terr.type, terr.shape, terr.majorFeature, terr.minorFeatures)
     }.toTypedArray())
 }
