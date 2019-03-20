@@ -7,6 +7,7 @@ import com.sergeysav.hexasphere.map.tile.TilePolygon
 import com.sergeysav.hexasphere.noiseGenerator
 import org.joml.Vector3f
 import org.joml.Vector3fc
+import kotlin.math.roundToInt
 import kotlin.random.Random
 
 /**
@@ -15,41 +16,61 @@ import kotlin.random.Random
  * @constructor Creates a new MapGenerationSettings
  */
 data class MapGenerationSettings(val size: Int, val plates: Int, val seed: Long, val plateHeightOctaves: Int,
-                                 val plateHeightAScale: Float, val plateHeightFScale: Float,
+                                 val plateHeightAScale: Float, val plateHeightFScale: Float, val tileHeightOctaves: Int,
+                                 val tileHeightAScale: Float, val tileHeightFScale: Float, val tileHeightMult: Float,
                                  val similarCollisionCoef: Float, val diffRegressionCoef: Float,
-                                 val diffCollisionCoef: Float, val seaLevel: Float, val epsilon: Float,
+                                 val diffCollisionCoef: Float, val seaFraction: Double, val epsilon: Float,
                                  val heatOctaves: Int, val heatAScale: Float,
                                  val heatFScale: Float, val moistureOctaves: Int,
                                  val moistureAScale: Float, val moistureFScale: Float, val biomeOctaves: Int,
                                  val biomeAScale: Float, val biomeFScale: Float, val linAlgPool: LinAlgPool) {
+    
+    var seaLevel = 0f
+    
+    val maxErosionIters = size * 10
     val random: Random = Random(seed)
-    val tectonicPlateHeightNoise: (Vector3fc) -> Float = noiseGenerator(random.nextFloat() * 1e4f,
+    val tectonicPlateHeightNoise: (Vector3fc) -> Float = noiseGenerator(random.nextLong(),
                                                                         octaves = plateHeightOctaves,
                                                                         aScaling = plateHeightAScale,
                                                                         fScaling = plateHeightFScale)
-    val heatNoise: (Vector3fc) -> Float = noiseGenerator(random.nextFloat() * 1e4f,
+    val heatNoise: (Vector3fc) -> Float = noiseGenerator(random.nextLong(),
                                                          octaves = heatOctaves,
                                                          aScaling = heatAScale,
                                                          fScaling = heatFScale)
-    val moistureNoise: (Vector3fc) -> Float = noiseGenerator(random.nextFloat() * 1e4f,
+    val moistureNoise: (Vector3fc) -> Float = noiseGenerator(random.nextLong(),
                                                              octaves = moistureOctaves,
                                                              aScaling = moistureAScale,
                                                              fScaling = moistureFScale)
-    val biomeNoise: (Vector3fc) -> Float = noiseGenerator(random.nextFloat() * 1e4f,
+    val biomeNoise: (Vector3fc) -> Float = noiseGenerator(random.nextLong(),
                                                           octaves = biomeOctaves,
                                                           aScaling = biomeAScale,
                                                           fScaling = biomeFScale)
+    val tileHeightNoise: (Vector3fc) -> Float = noiseGenerator(random.nextLong(),
+                                                               octaves = tileHeightOctaves,
+                                                               aScaling = tileHeightAScale,
+                                                               fScaling = tileHeightFScale)
 }
 
 private val PRIMARY_ORIENTATION: Vector3fc = Vector3f(0f, 1f, 0f)
+
+fun MapGenerationSettings.updateSeaLevel(elevations: Map<MapGenTile, Float>) {
+    seaLevel = elevations.values.sorted()[(seaFraction * elevations.size).roundToInt()]
+}
 
 fun MapGenerationSettings.generate(): World {
     val map = createBaseMap()
     map.sortBy { tile -> tile.type.vertices }
     val tectonicPlates = generateTectonicPlates(map)
     var elevations = generateElevations(tectonicPlates)
+    
+    updateSeaLevel(elevations)
+    elevations = elevations.mapValues { (_, elev) -> elev - seaLevel }
+    seaLevel = 0f
+    
     elevations = erode(elevations)
+    
     val heat = generateHeat(map, elevations)
+    
     val moisture = generateMoisture(map)
 //    val biomes = generateBiomes(map, elevations, heat, moisture)
     val terrain = generateTerrain(map, elevations, heat, moisture)

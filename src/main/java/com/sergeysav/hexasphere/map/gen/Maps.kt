@@ -107,18 +107,32 @@ fun MapGenerationSettings.generateTectonicPlates(map: Array<MapGenTile>): Array<
     //Flip the tPlates variable around
     val tectonicPlates = linAlgPool.vec3 { vec1 ->
         linAlgPool.vec3 { vec2 ->
+            val plateToVals = tPlates.entries.groupBy { it.value }.mapValues {
+                val plateTiles = it.value.map { it.key }.toSet()
+                vec2.zero()
+                plateTiles.forEach { tile ->
+                    tile.getCenter(vec1)
+                    vec2.add(vec1)
+                }
+                vec2.mul(1f/plateTiles.size)
+                tectonicPlateHeightNoise(vec2) to plateTiles
+            }
+            val quantities = plateToVals.entries.sortedBy { it.value.first }.map { it.key to it.value.second.size / map.size.toDouble() }.toMutableList()
+            var resultI = 0
+            for (i in 1 until quantities.size) {
+                quantities[i] = quantities[i].first to (quantities[i].second + quantities[i - 1].second)
+                if (quantities[i].second < seaFraction) {
+                    resultI = i
+                }
+            }
+            val noiseCutoff = plateToVals.getValue(quantities[resultI].first).first //+ plateToVals.getValue(quantities[resultI + 1].first).first) / 2
+            
             val tectonicPlates = tPlates.entries.groupBy { it.value }
                     .map {
                         val angle = (random.nextFloat() * 2 * PI / 180).toFloat()
-                        val plateTiles = it.value.map { it.key }.toSet()
-                        vec2.zero()
-                        plateTiles.forEach { tile ->
-                            tile.getCenter(vec1)
-                            vec2.add(vec1)
-                        }
-                        vec2.mul(1f/plateTiles.size)
-                        val noiseVal = tectonicPlateHeightNoise(vec2)
-                        val landPlate = noiseVal > 0
+                        val plateTiles = plateToVals.getValue(it.key).second
+                        val noiseVal = plateToVals.getValue(it.key).first
+                        val landPlate = noiseVal > noiseCutoff
                         var height = noiseVal * 0.5f
                         height = if (landPlate) {
                             0.1f + height
@@ -227,7 +241,12 @@ fun MapGenerationSettings.generateElevations(plates: Array<TectonicPlate>): Map<
         }
     }
     
-    return elevations
+    return linAlgPool.vec3 { v3 ->
+        elevations.mapValues {
+            it.key.getCenter(v3)
+            it.value + tileHeightNoise(v3) * tileHeightMult
+        }
+    }
 }
 
 // erosion
@@ -247,6 +266,7 @@ fun MapGenerationSettings.erode(elevations: Map<MapGenTile, Float>): Map<MapGenT
         }
     }
     
+    var iterations = 0
     do {
         var changed = false
         
@@ -254,18 +274,21 @@ fun MapGenerationSettings.erode(elevations: Map<MapGenTile, Float>): Map<MapGenT
             var newValue = value
             val lowestAdjacent = tile.adjacent.minBy { elevation[it]!! }!!
             val minElevation = elevation[lowestAdjacent]!!
-            if (newValue > elevations[tile]!!) {
-                newValue = elevations[tile]!!
-            }
-            if (newValue < minElevation) {
-                newValue = minElevation + epsilon
-            }
-            if (newValue != value) {
+            val a = newValue > elevations[tile]!!
+            val b = newValue < minElevation
+            if ((a || b) && !(a && b)) {
+                if (a) {
+                    newValue = elevations[tile]!!
+                }
+                if (b) {
+                    newValue = minElevation + epsilon
+                }
                 changed = true
             }
             newValue
         }
-    } while (changed)
+        iterations++
+    } while (changed && iterations < maxErosionIters)
     
     return elevation
 }

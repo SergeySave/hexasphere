@@ -21,7 +21,7 @@ import org.lwjgl.opengl.GL11
  *
  * @constructor Creates a new Hexasphere
  */
-class Hexasphere : Application(800, 600) {
+class Hexasphere(seed: Long) : Application(800, 600) {
     private val log = KotlinLogging.logger {}
     
     lateinit var cameraController: CameraController
@@ -33,10 +33,11 @@ class Hexasphere : Application(800, 600) {
     lateinit var stereographicRenderer: SimpleStereographicRenderer
     
     val linAlgPool = LinAlgPool()
-    val mapGenerationSettings = MapGenerationSettings(31, 30, 0L,
-                                                      8, 0.9f, 0.5f,
+    val mapGenerationSettings = MapGenerationSettings(31, 30, seed,
+                                                      8, 0.8f, 0.5f,
+                                                      8, 0.5f, 1.3f, 0.1f,
                                                       0.2f, 5f, 1f,
-                                                      0f, 0.05f,
+                                                      0.65, 0.05f,
                                                       8, 0.3f, 0.5f,
                                                       8, 0.3f, 0.5f,
                                                       2, 0.8f, 1.2f, linAlgPool)
