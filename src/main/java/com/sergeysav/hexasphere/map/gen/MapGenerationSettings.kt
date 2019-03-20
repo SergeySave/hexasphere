@@ -5,6 +5,7 @@ import com.sergeysav.hexasphere.map.World
 import com.sergeysav.hexasphere.map.tile.Tile
 import com.sergeysav.hexasphere.map.tile.TilePolygon
 import com.sergeysav.hexasphere.noiseGenerator
+import mu.KotlinLogging
 import org.joml.Vector3f
 import org.joml.Vector3fc
 import kotlin.math.roundToInt
@@ -23,7 +24,7 @@ data class MapGenerationSettings(val size: Int, val plates: Int, val seed: Long,
                                  val heatOctaves: Int, val heatAScale: Float,
                                  val heatFScale: Float, val moistureOctaves: Int,
                                  val moistureAScale: Float, val moistureFScale: Float, val biomeOctaves: Int,
-                                 val biomeAScale: Float, val biomeFScale: Float, val linAlgPool: LinAlgPool) {
+                                 val biomeAScale: Float, val biomeFScale: Float, val linAlg: LinAlgPool) {
     
     var seaLevel = 0f
     
@@ -57,22 +58,33 @@ fun MapGenerationSettings.updateSeaLevel(elevations: Map<MapGenTile, Float>) {
     seaLevel = elevations.values.sorted()[(seaFraction * elevations.size).roundToInt()]
 }
 
+private val log = KotlinLogging.logger {}
+
 fun MapGenerationSettings.generate(): World {
+    log.info { if (log.isDebugEnabled) "Generating Map using settings $this" else "Generating Map" }
+    log.trace { "Generating Base Map" }
     val map = createBaseMap()
     map.sortBy { tile -> tile.type.vertices }
+    log.trace { "Generating Tectonic Plates" }
     val tectonicPlates = generateTectonicPlates(map)
+    log.trace { "Generating Tile Elevations" }
     var elevations = generateElevations(tectonicPlates)
     
+    log.trace { "Renormalizing Sea Level" }
     updateSeaLevel(elevations)
     elevations = elevations.mapValues { (_, elev) -> elev - seaLevel }
     seaLevel = 0f
     
+    log.trace { "Simulating Erosion" }
     elevations = erode(elevations)
     
+    log.trace { "Generating Heap Map" }
     val heat = generateHeat(map, elevations)
     
+    log.trace { "Generating Moisture Map" }
     val moisture = generateMoisture(map)
-//    val biomes = generateBiomes(map, elevations, heat, moisture)
+    
+    log.trace { "Generating Terrain" }
     val terrain = generateTerrain(map, elevations, heat, moisture)
     return World(map.map { baseTile ->
         val v = Vector3f()

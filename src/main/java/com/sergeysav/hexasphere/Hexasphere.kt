@@ -47,6 +47,7 @@ class Hexasphere(seed: Long) : Application(800, 600) {
     val world = mapGenerationSettings.generate()
     lateinit var worldRenderable: WorldRenderable
     var texture: Texture2D = Texture2D(0)
+    private val sync = Sync()
     
     override fun create() {}
     
@@ -115,10 +116,11 @@ class Hexasphere(seed: Long) : Application(800, 600) {
         }
     
         val now = System.nanoTime()
-//        val delta = 1 / ((now - lastNano) / 1.0e9)
+        val delta = 1 / ((now - lastNano) / 1.0e9)
         lastNano = now
         
         renderer.render(worldRenderable, cameraController.camera)
+        sync.sync(30)
     }
     
     override fun cleanup() {
