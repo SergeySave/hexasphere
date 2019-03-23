@@ -12,6 +12,7 @@ import com.sergeysav.hexasphere.client.gl.Mesh
 import com.sergeysav.hexasphere.client.gl.Texture2D
 import com.sergeysav.hexasphere.client.gl.createTexture
 import com.sergeysav.hexasphere.client.lwjgl.Application
+import com.sergeysav.hexasphere.client.nuklear.FPSGuiWindow
 import com.sergeysav.hexasphere.client.world.WorldRenderable
 import com.sergeysav.hexasphere.common.LinAlgPool
 import com.sergeysav.hexasphere.common.ZERO
@@ -55,21 +56,22 @@ class Hexasphere(seed: Long) : Application(800, 600) {
     lateinit var worldRenderable: WorldRenderable
     var texture: Texture2D = Texture2D(0)
     private val sync = Sync()
+    val fpsGuiWindow = FPSGuiWindow()
     
     override fun create() {}
     
     override fun init() {
         // Set the clear color
         GL11.glClearColor(0.2f, 0.2f, 0.2f, 0.0f)
-    
         GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL)
-//        GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE)
-//        GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_POINT)
+        //        GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE)
+        //        GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_POINT)
         GL11.glPointSize(8f)
         GL11.glEnable(GL11.GL_DEPTH_TEST)
+        //        GL11.glEnable(GL11.GL_CULL_FACE)
     
         cameraController = CameraController(
-                Camera(Math.toRadians(45.0).toFloat(), width.toFloat() / height,
+                Camera(Math.toRadians(45.0).toFloat(), fWidth.toFloat() / fHeight,
                        0.1f,
                        100f), linAlgPool)
         cameraController.setPos(2f, 0f, 0f)
@@ -88,33 +90,50 @@ class Hexasphere(seed: Long) : Application(800, 600) {
             stereographicRenderer = SimpleStereographicRenderer(linAlgPool)
         }
         renderer = normalRenderer
+    
+        keyCallbacks.add(priority = 0) { key, scancode, action, mods ->
+            if (action == GLFW.GLFW_RELEASE && key == GLFW.GLFW_KEY_R) {
+                if (renderer == normalRenderer) {
+                    renderer = stereographicRenderer
+                } else {
+                    renderer = normalRenderer
+                }
+            }
+            false
+        }
     }
     
     override fun render() {
         val now = System.nanoTime()
         val delta = ((now - lastNano) / 1.0e9)
         lastNano = now
+    
+        fpsGuiWindow.layout(gui, 1 / delta)
         
         GL11.glClear(GL11.GL_COLOR_BUFFER_BIT or GL11.GL_DEPTH_BUFFER_BIT) // clear the framebuffer
         
         val speed = (0.1f * Math.pow(cameraController.camera.position.length().toDouble() / 5, 1.5)).toFloat()
     
-        val upDown = speed * (if (keysDown.contains(GLFW.GLFW_KEY_W)) 1 else 0 + if (keysDown.contains(
-                        GLFW.GLFW_KEY_S)) -1 else 0) * delta * 60
-        val rightLeft = speed * (if (keysDown.contains(GLFW.GLFW_KEY_D)) 1 else 0 + if (keysDown.contains(
-                        GLFW.GLFW_KEY_A)) -1 else 0) * delta * 60
-        val rotate = 0.075f * (if (keysDown.contains(GLFW.GLFW_KEY_E)) 1 else 0 + if (keysDown.contains(
-                        GLFW.GLFW_KEY_Q)) -1 else 0) * delta * 60
-        val inOut = speed * (if (keysDown.contains(GLFW.GLFW_KEY_SPACE)) 1 else 0 + if (keysDown.contains(
-                        GLFW.GLFW_KEY_LEFT_SHIFT)) -1 else 0) * delta * 60
-        
+        val upDown = speed * (if (GLFW.glfwGetKey(window,
+                                                  GLFW.GLFW_KEY_W) == GLFW.GLFW_PRESS) 1 else 0 + if (GLFW.glfwGetKey(
+                        window, GLFW.GLFW_KEY_S) == GLFW.GLFW_PRESS) -1 else 0) * delta * 60
+        val rightLeft = speed * (if (GLFW.glfwGetKey(window,
+                                                     GLFW.GLFW_KEY_D) == GLFW.GLFW_PRESS) 1 else 0 + if (GLFW.glfwGetKey(
+                        window, GLFW.GLFW_KEY_A) == GLFW.GLFW_PRESS) -1 else 0) * delta * 60
+        val rotate = 0.075f * (if (GLFW.glfwGetKey(window,
+                                                   GLFW.GLFW_KEY_E) == GLFW.GLFW_PRESS) 1 else 0 + if (GLFW.glfwGetKey(
+                        window, GLFW.GLFW_KEY_Q) == GLFW.GLFW_PRESS) -1 else 0) * delta * 60
+        val inOut = speed * (if (GLFW.glfwGetKey(window,
+                                                 GLFW.GLFW_KEY_SPACE) == GLFW.GLFW_PRESS) 1 else 0 + if (GLFW.glfwGetKey(
+                        window, GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS) -1 else 0) * delta * 60
+
         cameraController.run {
-            setAspect(width, height)
+            setAspect(fWidth, fHeight)
             translate(forward, inOut.toFloat())
             rotateAround(ZERO, right, -upDown.toFloat())
             rotateAround(ZERO, up, rightLeft.toFloat())
             rotate(forward, -rotate.toFloat())
-        
+
             if (camera.position.lengthSquared() < 1.25*1.25f) {
                 camera.position.normalize(1.25f)
             }
@@ -131,8 +150,9 @@ class Hexasphere(seed: Long) : Application(800, 600) {
                                                       worldRenderable, cameraController)
     
         worldRenderable.updateMesh(mouseoverTile)
-        
+    
         renderer.render(worldRenderable, cameraController.camera)
+    
         sync(60)
     }
     
@@ -141,15 +161,5 @@ class Hexasphere(seed: Long) : Application(800, 600) {
         normalRenderer.cleanup()
         worldRenderable.mesh.cleanup()
         texture.cleanup()
-    }
-    
-    override fun onKeyPress(key: Int, scancode: Int, action: Int, mods: Int) {
-        if (action == GLFW.GLFW_RELEASE && key == GLFW.GLFW_KEY_R) {
-            if (renderer == normalRenderer) {
-                renderer = stereographicRenderer
-            } else {
-                renderer = normalRenderer
-            }
-        }
     }
 }

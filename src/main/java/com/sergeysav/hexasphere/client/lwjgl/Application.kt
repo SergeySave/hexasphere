@@ -1,21 +1,31 @@
 package com.sergeysav.hexasphere.client.lwjgl
 
+import com.sergeysav.hexasphere.client.nuklear.Gui
 import mu.KotlinLogging
 import org.lwjgl.Version
 import org.lwjgl.glfw.Callbacks
 import org.lwjgl.glfw.GLFW
 import org.lwjgl.glfw.GLFWErrorCallback
+import org.lwjgl.nuklear.Nuklear
+import org.lwjgl.opengl.ARBDebugOutput
 import org.lwjgl.opengl.GL
-import org.lwjgl.opengl.GL11
+import org.lwjgl.opengl.GL11C
+import org.lwjgl.opengl.GL43
+import org.lwjgl.opengl.GLUtil
+import org.lwjgl.opengl.KHRDebug
+import org.lwjgl.system.Callback
 import org.lwjgl.system.MemoryStack
+import org.lwjgl.system.MemoryStack.stackPush
 import org.lwjgl.system.MemoryUtil
+import java.nio.ByteBuffer
+import java.nio.IntBuffer
 
 /**
  * @author sergeys
  *
  * @constructor Creates a new Application
  */
-abstract class Application(width: Int, height: Int) {
+abstract class Application(width: Int, height: Int): InputManager() {
     private val log = KotlinLogging.logger {}
     
     protected var window: Long = MemoryUtil.NULL
@@ -27,21 +37,29 @@ abstract class Application(width: Int, height: Int) {
     var height: Int = height
         private set
     
-    val keysDown = mutableSetOf<Int>()
-    val mouseDown = mutableSetOf<Int>()
+    var fWidth: Int = width
+        private set
+    
+    var fHeight: Int = height
+        private set
+    
+    private var debugProc: Callback? = null
+    lateinit var gui: Gui
     
     fun run() {
         log.info { "LWJGL ${Version.getVersion()} Application Starting" }
         
         try {
-            init(width, height, "Tesselation Test")
+            init(width, height, "Hexasphere")
             loop()
         } catch (e: Exception) {
             log.error(e) { "Error Occurred" }
         } finally {
             log.debug { "Closing" }
             cleanup()
+            gui.cleanup()
             Callbacks.glfwFreeCallbacks(window)
+            debugProc?.free()
             GLFW.glfwDestroyWindow(window)
             GLFW.glfwTerminate()
             GLFW.glfwSetErrorCallback(null)?.free()
@@ -72,6 +90,8 @@ abstract class Application(width: Int, height: Int) {
     
         //Allow the window to be resized
         GLFW.glfwWindowHint(GLFW.GLFW_RESIZABLE, GLFW.GLFW_TRUE)
+    
+        GLFW.glfwWindowHint(GLFW.GLFW_OPENGL_DEBUG_CONTEXT, GLFW.GLFW_TRUE)
         
         log.trace { "Creating application" }
         create()
@@ -81,53 +101,73 @@ abstract class Application(width: Int, height: Int) {
         if (window == MemoryUtil.NULL)
             throw IllegalStateException("Failed to create the GLFW window")
     
-        log.trace { "Adding callbacks" }
-        GLFW.glfwSetFramebufferSizeCallback(window) { _, w, h ->
-            this.width = w
-            this.height = h
-            GL11.glViewport(0, 0, w, h)
-            this.resize(w, h)
+        // Make the OpenGL context current
+        GLFW.glfwMakeContextCurrent(window)
+    
+        // This line is critical for LWJGL's interoperation with GLFW's
+        // OpenGL context, or any context that is managed externally.
+        // LWJGL detects the context that is current in the current thread,
+        // creates the GLCapabilities instance and makes the OpenGL
+        // bindings available for use.
+        val caps = GL.createCapabilities(true)
+    
+        debugProc = GLUtil.setupDebugMessageCallback()
+        when {
+            caps.OpenGL43            -> GL43.glDebugMessageControl(GL43.GL_DEBUG_SOURCE_API, GL43.GL_DEBUG_TYPE_OTHER,
+                                                                   GL43.GL_DEBUG_SEVERITY_NOTIFICATION,
+                                                                   null as IntBuffer?, false)
+            caps.GL_KHR_debug        -> KHRDebug.glDebugMessageControl(
+                    KHRDebug.GL_DEBUG_SOURCE_API,
+                    KHRDebug.GL_DEBUG_TYPE_OTHER,
+                    KHRDebug.GL_DEBUG_SEVERITY_NOTIFICATION,
+                    null as IntBuffer?,
+                    false
+            )
+            caps.GL_ARB_debug_output -> ARBDebugOutput.glDebugMessageControlARB(ARBDebugOutput.GL_DEBUG_SOURCE_API_ARB,
+                                                                                ARBDebugOutput.GL_DEBUG_TYPE_OTHER_ARB,
+                                                                                ARBDebugOutput.GL_DEBUG_SEVERITY_LOW_ARB,
+                                                                                null as IntBuffer?, false)
         }
-        // Setup a key callback. It will be called every time a key is pressed, repeated or released.
-        GLFW.glfwSetKeyCallback(window) { window, key, scancode, action, mods ->
+        
+        log.trace { "Adding callbacks" }
+        GLFW.glfwSetFramebufferSizeCallback(window) { _, w, h -> this.resize(w, h) }
+    
+        keyCallbacks.add(priority = -100) { key, _, action, _ ->
             if (key == GLFW.GLFW_KEY_ESCAPE && action == GLFW.GLFW_RELEASE) {
                 GLFW.glfwSetWindowShouldClose(window, true) // We will detect this in the rendering loop
+                true
             } else {
-                if (action == GLFW.GLFW_PRESS) {
-                    keysDown.add(key)
-                }
-                onKeyPress(key, scancode, action, mods)
-                if (action == GLFW.GLFW_RELEASE) {
-                    keysDown.remove(key)
-                }
+                false
             }
+        }
+    
+        // Setup a key callback. It will be called every time a key is pressed, repeated or released.
+        GLFW.glfwSetKeyCallback(window) { _, key, scanCode, action, mods ->
+            handleKeyCallback(key, scanCode, action, mods)
         }
         
         GLFW.glfwSetMouseButtonCallback(window) { window, button, action, mods ->
-            if (action == GLFW.GLFW_PRESS) {
-                mouseDown.add(button)
-            }
             var x: Double = -1.0
             var y: Double = -1.0
             MemoryStack.stackPush().use { stack ->
                 val pX = stack.mallocDouble(1)
                 val pY = stack.mallocDouble(1)
-                
+    
                 GLFW.glfwGetCursorPos(window, pX, pY)
                 x = pX.get()
                 y = pY.get()
             }
-            onMouseAction(button, action, mods, x, y)
-            if (action == GLFW.GLFW_RELEASE) {
-                mouseDown.remove(button)
-            }
-        }
-        
-        GLFW.glfwSetCursorPosCallback(window) { window, xpos, ypos ->
-            onMouseMove(xpos, ypos)
-            mouseDown.forEach { onMouseDrag(it, xpos, ypos) }
+            handleMouseButtonCallback(button, action, mods, x, y)
         }
     
+        GLFW.glfwSetCursorPosCallback(window) { _, x, y -> handleMouseMoveCallback(x, y) }
+    
+        GLFW.glfwSetScrollCallback(window) { _, x, y -> handleScrollCallback(x, y) }
+    
+        GLFW.glfwSetCharCallback(window) { _, codePoint -> handleCharacterCallback(codePoint) }
+    
+        gui = Gui(this, "Helvetica.ttf")
+   
         log.trace { "Setting window contexts" }
         // Get the thread stack and push a new frame
         MemoryStack.stackPush().use { stack ->
@@ -148,22 +188,12 @@ abstract class Application(width: Int, height: Int) {
             )
         } // the stack frame is popped automatically
     
-        // Make the OpenGL context current
-        GLFW.glfwMakeContextCurrent(window)
-    
         // Enable v-sync
         GLFW.glfwSwapInterval(1)
     
         // Make the window visible
         GLFW.glfwShowWindow(window)
         GLFW.glfwFocusWindow(window)
-        
-        // This line is critical for LWJGL's interoperation with GLFW's
-        // OpenGL context, or any context that is managed externally.
-        // LWJGL detects the context that is current in the current thread,
-        // creates the GLCapabilities instance and makes the OpenGL
-        // bindings available for use.
-        GL.createCapabilities(true)
     
         log.debug { "Initializing application" }
         init()
@@ -174,16 +204,40 @@ abstract class Application(width: Int, height: Int) {
         // Run the rendering loop until the user has attempted to close
         // the window or has pressed the ESCAPE key.
         while (!GLFW.glfwWindowShouldClose(window)) {
-            render()
-    
-            GLFW.glfwSwapBuffers(window) // swap the color bufferobjects
-            
+            stackPush().use { stack ->
+                val w = stack.mallocInt(1)
+                val h = stack.mallocInt(1)
+        
+                GLFW.glfwGetWindowSize(window, w, h)
+                width = w.get(0)
+                height = h.get(0)
+        
+                GLFW.glfwGetFramebufferSize(window, w, h)
+                fWidth = w.get(0)
+                fHeight = h.get(0)
+                GL11C.glViewport(0, 0, fWidth, fHeight)
+            }
             // Poll for window events. The key callback above will only be
             // invoked during this call.
-            GLFW.glfwPollEvents()
+            gui.doRegisterInputEvents()
+            
+            render()
+            gui.render(Nuklear.NK_ANTI_ALIASING_ON, 512 * 1024, 128 * 1024, width, height, fWidth, fHeight)
+    
+            GLFW.glfwSwapBuffers(window) // swap the color bufferobjects
         }
         log.debug { "Ending Render Loop" }
     }
+    
+    override fun isKeyPressed(key: Int) = GLFW.glfwGetKey(window, key) == GLFW.GLFW_PRESS
+    override fun setClipboardString(string: ByteBuffer) {
+        GLFW.glfwSetClipboardString(window, string)
+    }
+    
+    override fun getClipboardString(): Long = GLFW.nglfwGetClipboardString(window)
+    override fun checkForInputEvents() = GLFW.glfwPollEvents()
+    override fun setInputMode(mode: Int, value: Int) = GLFW.glfwSetInputMode(window, mode, value)
+    override fun setCursorPosition(x: Double, y: Double) = GLFW.glfwSetCursorPos(window, x, y)
     
     abstract fun create()
     abstract fun init()
@@ -191,8 +245,4 @@ abstract class Application(width: Int, height: Int) {
     abstract fun cleanup()
     
     open fun resize(width: Int, height: Int) = Unit
-    open fun onKeyPress(key: Int, scancode: Int, action: Int, mods: Int) = Unit
-    open fun onMouseAction(button: Int, action: Int, mods: Int, xpos: Double, ypos: Double) = Unit
-    open fun onMouseMove(xpos: Double, ypos: Double) = Unit
-    open fun onMouseDrag(button: Int, xpos: Double, ypos: Double) = Unit
 }

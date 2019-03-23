@@ -16,5 +16,5 @@ sealed class FloatTypeVertexAttribute(name: String, components: Int, normalized:
 //class FloatVertexAttribute(name: String, normalized: Boolean = false) : FloatTypeVertexAttribute(name, 1, normalized)
 class Vec2VertexAttribute(name: String, normalized: Boolean = false) : FloatTypeVertexAttribute(name, 2, normalized)
 class Vec3VertexAttribute(name: String, normalized: Boolean = false) : FloatTypeVertexAttribute(name, 3, normalized)
-//class Vec4VertexAttribute(name: String, normalized: Boolean = false) : FloatTypeVertexAttribute(name, 4, normalized)
+class Vec4VertexAttribute(name: String, normalized: Boolean = false): FloatTypeVertexAttribute(name, 4, normalized)
 

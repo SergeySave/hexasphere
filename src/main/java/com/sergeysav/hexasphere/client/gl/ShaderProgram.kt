@@ -16,7 +16,7 @@ class ShaderProgram @Throws(ShaderException::class) constructor(): Bindable {
     private var vertexShaderId: Int = 0
     private var fragmentShaderId: Int = 0
     
-    //    private val attributes = mutableMapOf<String, Int>()
+    private val attributes = mutableMapOf<String, Int>()
     private val uniforms = mutableMapOf<String, Int>()
     
     var bound: Boolean = false
@@ -72,14 +72,17 @@ class ShaderProgram @Throws(ShaderException::class) constructor(): Bindable {
         if (fragmentShaderId != 0) {
             GL20.glDeleteShader(fragmentShaderId)
         }
+    }
     
+    fun validate() {
         GL20.glValidateProgram(programId)
         if (GL20.glGetProgrami(programId, GL20.GL_VALIDATE_STATUS) == 0) {
             log.warn { "Warning validating Shader code: " + GL20.glGetProgramInfoLog(programId, 1024) }
         }
     }
     
-    //    fun getAttribute(attribute: String) = attributes.computeIfAbsent(attribute) { GL20.glGetAttribLocation(programId, attribute) }
+    fun getAttribute(attribute: String) =
+            attributes.computeIfAbsent(attribute) { GL20.glGetAttribLocation(programId, attribute) }
 
     fun getUniform(uniform: String) = uniforms.computeIfAbsent(uniform) { GL20.glGetUniformLocation(programId, uniform) }
     

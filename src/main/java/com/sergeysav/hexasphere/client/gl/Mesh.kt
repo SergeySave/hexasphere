@@ -67,7 +67,11 @@ class Mesh(private var glDrawingMode: GLDrawingMode, private val useIBOs: Boolea
     }
     
     fun bound(inner: ()->Unit) {
-        vao.bound(inner)
+        vao.bound {
+            vbo.bind()
+            ibo.bind()
+            inner()
+        }
     }
     
     fun cleanup() {
