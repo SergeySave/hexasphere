@@ -89,12 +89,12 @@ fun MapGenerationSettings.generate(): World {
     val terrain = generateTerrain(map, elevations, heat, moisture)
     return World(map.map { baseTile ->
         val v = Vector3f()
-        baseTile.getCenter(v)
+    
         val verts = Array(baseTile.type.vertices) { Vector3f() }
         baseTile.getVertices(verts)
     
-        var value = PRIMARY_ORIENTATION.dot(
-                verts[0]) // as primary orientation is a unit vector, this is a projection onto it
+        // as primary orientation is a unit vector, this is a projection onto it
+        var value = PRIMARY_ORIENTATION.dot(verts[0])
         var index = 0
         for (i in 1 until verts.size) {
             val thisVal = PRIMARY_ORIENTATION.dot(verts[i])
@@ -103,11 +103,30 @@ fun MapGenerationSettings.generate(): World {
                 index = i
             }
         }
+        val direction = linAlgPool.vec3 { secOrientation ->
+            baseTile.getCenter(secOrientation)
+            //Protect from NaNs caused by secOrientation being co-linear with PRIMARY_ORIENTATION
+            if (secOrientation.normalize().dot(PRIMARY_ORIENTATION) == 1f) return@vec3 -1
+            secOrientation.cross(PRIMARY_ORIENTATION).normalize()
+            baseTile.getCenter(v)
+            val next = v.sub(verts[(index + 1) mod verts.size]).normalize().dot(secOrientation)
+            baseTile.getCenter(v)
+            val prev = v.sub(verts[(index - 1) mod verts.size]).normalize().dot(secOrientation)
+            if (next >= prev) -1 else 1
+        }
     
+    
+        baseTile.getCenter(v)
         val terr = terrain.getValue(baseTile)
         Tile(TilePolygon(v,
-                         Array(verts.size) { verts[(it + index) % verts.size] }),
+                         Array(verts.size) { verts[(direction * it + index) mod verts.size] }),
              elevations.getValue(baseTile), heat.getValue(baseTile), moisture.getValue(baseTile),
              terr.type, terr.shape, terr.majorFeature, terr.minorFeatures)
     }.toTypedArray())
+}
+
+private infix fun Int.mod(other: Int): Int = if (this >= 0) {
+    this % other
+} else {
+    this % other + other
 }

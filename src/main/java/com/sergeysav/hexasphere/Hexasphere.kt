@@ -63,12 +63,12 @@ class Hexasphere(seed: Long) : Application(800, 600) {
     override fun init() {
         // Set the clear color
         GL11.glClearColor(0.2f, 0.2f, 0.2f, 0.0f)
-        GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL)
-        //        GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE)
+        GL11.glPolygonMode(GL11.GL_FRONT, GL11.GL_FILL)
+        //                GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE)
         //        GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_POINT)
         GL11.glPointSize(8f)
         GL11.glEnable(GL11.GL_DEPTH_TEST)
-        //        GL11.glEnable(GL11.GL_CULL_FACE)
+        GL11.glEnable(GL11.GL_CULL_FACE)
     
         cameraController = CameraController(
                 Camera(Math.toRadians(45.0).toFloat(), fWidth.toFloat() / fHeight,
@@ -109,7 +109,7 @@ class Hexasphere(seed: Long) : Application(800, 600) {
         lastNano = now
     
         fpsGuiWindow.layout(gui, 1 / delta)
-        
+    
         GL11.glClear(GL11.GL_COLOR_BUFFER_BIT or GL11.GL_DEPTH_BUFFER_BIT) // clear the framebuffer
         
         val speed = (0.1f * Math.pow(cameraController.camera.position.length().toDouble() / 5, 1.5)).toFloat()
