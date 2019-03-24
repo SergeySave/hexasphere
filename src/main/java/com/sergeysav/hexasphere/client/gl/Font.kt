@@ -1,6 +1,5 @@
-package com.sergeysav.hexasphere.client
+package com.sergeysav.hexasphere.client.gl
 
-import com.sergeysav.hexasphere.client.gl.Texture2D
 import org.lwjgl.opengl.GL11
 import org.lwjgl.opengl.GL11C
 import org.lwjgl.opengl.GL12C

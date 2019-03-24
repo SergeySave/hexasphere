@@ -1,8 +1,6 @@
 package com.sergeysav.hexasphere.client.nuklear
 
-import com.sergeysav.hexasphere.client.NkFont
 import com.sergeysav.hexasphere.client.bound
-import com.sergeysav.hexasphere.client.fromTTF
 import com.sergeysav.hexasphere.client.gl.ElementBufferObject
 import com.sergeysav.hexasphere.client.gl.ShaderProgram
 import com.sergeysav.hexasphere.client.gl.Texture2D
@@ -47,7 +45,8 @@ class Gui(private val inputManager: InputManager, fontResourceString: String) {
     private val commandBuffer: NkBuffer
     private val nullTexture: NkDrawNullTexture
     private val program: ShaderProgram
-    private val font: NkFont
+    private val mainFont: NkFont
+    val bigFont: NkFont
     private val vao: VertexArrayObject
     private val vbo: VertexBufferObject
     private val ebo: ElementBufferObject
@@ -62,6 +61,21 @@ class Gui(private val inputManager: InputManager, fontResourceString: String) {
             .position(2).attribute(Nuklear.NK_VERTEX_COLOR).format(Nuklear.NK_FORMAT_R8G8B8A8).offset(16)
             .position(3).attribute(Nuklear.NK_VERTEX_ATTRIBUTE_COUNT).format(Nuklear.NK_FORMAT_COUNT).offset(0)
             .flip()
+    
+    private fun setStyle() {
+        context.style { style ->
+            style.button { button ->
+                button.normal().data().color().a(0)
+                button.hover().data().color().a(0)
+                button.active().data().color().a(0)
+                button.border(0f)
+                button.text_normal().set(255.toByte(), 255.toByte(), 255.toByte(), 255.toByte())
+                button.text_hover().set(127, 127, 127, 255.toByte())
+            }
+            
+            style.text().color().set(255.toByte(), 255.toByte(), 255.toByte(), 255.toByte())
+        }
+    }
     
     init {
         log.debug { "Setting up GUI context" }
@@ -246,8 +260,11 @@ class Gui(private val inputManager: InputManager, fontResourceString: String) {
         }
         
         log.trace { "Initializing Nuklear Font" }
-        font = NkFont.fromTTF(18f, IOUtil.ioResourceToByteBuffer(fontResourceString, 512 * 1024))
-        Nuklear.nk_style_set_font(context, font.nkFont)
+        val ttf = IOUtil.ioResourceToByteBuffer(fontResourceString, 512 * 1024)
+        mainFont = NkFont.fromTTF(18f, ttf)
+        bigFont = NkFont.fromTTF(36f, ttf)
+        Nuklear.nk_style_set_font(context, mainFont.nkFont)
+        setStyle()
     }
     
     fun doRegisterInputEvents() {
@@ -399,8 +416,8 @@ class Gui(private val inputManager: InputManager, fontResourceString: String) {
         ebo.cleanup()
         vao.cleanup()
         Nuklear.nk_buffer_free(commandBuffer)
-        
-        font.cleanup()
+    
+        mainFont.cleanup()
         nkAllocator.alloc()?.free()
         nkAllocator.mfree()?.free()
     }

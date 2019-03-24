@@ -29,7 +29,6 @@ data class WorldRenderable(val world: World, val modelMatrix: Matrix4f,
         world.apply {
             for (i in 0 until numPentagons) {
                 val verts = tiles[i].tilePolygon.vertices
-//                val biome = tiles[i].biome
                 val (r, g, b) = tiles[i].getColoring()
                 val (u, v) = tiles[i].getImageCoords()
                 for (j in 0 until verts.size) {
@@ -52,7 +51,6 @@ data class WorldRenderable(val world: World, val modelMatrix: Matrix4f,
             val hexIOffset = (5 - 2) * 3 * numPentagons
             for (i in 0 until numHexagons) {
                 val verts = tiles[i + numPentagons].tilePolygon.vertices
-//                val biome = tiles[i + numPentagons].biome
                 val (r, g, b) = tiles[i + numPentagons].getColoring()
                 val (u, v) = tiles[i + numPentagons].getImageCoords()
                 for (j in 0 until verts.size) {
@@ -85,18 +83,14 @@ data class WorldRenderable(val world: World, val modelMatrix: Matrix4f,
     
     fun updateMesh(mouseoverTile: Tile?) {
         world.apply {
-            //            count = 0
-            //            println(mouseoverTile)
             for (i in 0 until numPentagons) {
                 val (r, g, b) = tiles[i].getColoring()
                 for (j in 0 until tiles[i].tilePolygon.polygonType.vertices) {
                     if (mouseoverTile == tiles[i]) {
-                        //                        count--
                         vertices[5 * floatsPerVert * i + floatsPerVert * j + 3] = 1.0f
                         vertices[5 * floatsPerVert * i + floatsPerVert * j + 4] = 0.0f
                         vertices[5 * floatsPerVert * i + floatsPerVert * j + 5] = 0.0f
                     } else {
-                        //                        count++
                         vertices[5 * floatsPerVert * i + floatsPerVert * j + 3] = r
                         vertices[5 * floatsPerVert * i + floatsPerVert * j + 4] = g
                         vertices[5 * floatsPerVert * i + floatsPerVert * j + 5] = b
@@ -108,19 +102,16 @@ data class WorldRenderable(val world: World, val modelMatrix: Matrix4f,
                 val (r, g, b) = tiles[i + numPentagons].getColoring()
                 for (j in 0 until tiles[i + numPentagons].tilePolygon.polygonType.vertices) {
                     if (mouseoverTile == tiles[i + numPentagons]) {
-                        //                        count--
                         vertices[6 * floatsPerVert * i + floatsPerVert * j + 3 + floatsPerVert * hexVOffset] = 1.0f
                         vertices[6 * floatsPerVert * i + floatsPerVert * j + 4 + floatsPerVert * hexVOffset] = 0.0f
                         vertices[6 * floatsPerVert * i + floatsPerVert * j + 5 + floatsPerVert * hexVOffset] = 0.0f
                     } else {
-                        //                        count++
                         vertices[6 * floatsPerVert * i + floatsPerVert * j + 3 + floatsPerVert * hexVOffset] = r
                         vertices[6 * floatsPerVert * i + floatsPerVert * j + 4 + floatsPerVert * hexVOffset] = g
                         vertices[6 * floatsPerVert * i + floatsPerVert * j + 5 + floatsPerVert * hexVOffset] = b
                     }
                 }
             }
-            //            println(count)
         }
         mesh.setVertexData(vertices)
     }

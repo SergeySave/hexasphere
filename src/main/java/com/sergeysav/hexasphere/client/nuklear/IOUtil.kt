@@ -1,6 +1,6 @@
 package com.sergeysav.hexasphere.client.nuklear
 
-import com.sergeysav.hexasphere.client.lwjgl.Application
+import com.sergeysav.hexasphere.Hexasphere
 import org.lwjgl.BufferUtils
 import org.lwjgl.BufferUtils.createByteBuffer
 import java.io.IOException
@@ -40,7 +40,7 @@ object IOUtil {
                 }
             }
         } else {
-            Application::class.java.classLoader.getResourceAsStream(resource)!!.use { source ->
+            Hexasphere::class.java.classLoader.getResourceAsStream(resource)!!.use { source ->
                 Channels.newChannel(source).use { rbc ->
                     buffer = createByteBuffer(bufferSize)
                     

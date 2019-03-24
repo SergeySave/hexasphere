@@ -1,6 +1,6 @@
 package com.sergeysav.hexasphere.common
 
-import com.sergeysav.hexasphere.client.lwjgl.Application
+import com.sergeysav.hexasphere.Hexasphere
 import org.joml.Matrix3f
 import org.joml.Matrix4f
 import org.joml.Vector3f
@@ -15,7 +15,7 @@ import kotlin.random.Random
  * @author sergeys
  */
 fun loadResource(fileName: String): String {
-    Application::class.java.getResourceAsStream(fileName).use {
+    Hexasphere::class.java.getResourceAsStream(fileName).use {
         Scanner(it, "UTF-8").use { scan ->
             scan.useDelimiter("\\A")
             return scan.next()
@@ -23,7 +23,7 @@ fun loadResource(fileName: String): String {
     }
 }
 
-fun getResourcePath(fileName: String): String = File(Application::class.java.getResource(fileName).toURI()).absolutePath
+fun getResourcePath(fileName: String): String = File(Hexasphere::class.java.getResource(fileName).toURI()).absolutePath
 
 fun Matrix3f.setUniform(uniformId: Int) {
     MemoryStack.stackPush().use { stack ->

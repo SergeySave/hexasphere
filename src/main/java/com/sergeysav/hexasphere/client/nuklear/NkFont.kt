@@ -1,5 +1,6 @@
-package com.sergeysav.hexasphere.client
+package com.sergeysav.hexasphere.client.nuklear
 
+import com.sergeysav.hexasphere.client.gl.Font
 import org.lwjgl.nuklear.NkUserFont
 import org.lwjgl.nuklear.NkUserFontGlyph
 import org.lwjgl.nuklear.Nuklear

@@ -18,18 +18,18 @@ import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryStack.stackPush
 import org.lwjgl.system.MemoryUtil
 import java.nio.ByteBuffer
+import java.nio.DoubleBuffer
 import java.nio.IntBuffer
 
 /**
  * @author sergeys
  *
- * @constructor Creates a new Application
+ * @constructor Creates a new GLFWManager
  */
-abstract class Application(width: Int, height: Int): InputManager() {
+abstract class GLFWManager(width: Int, height: Int): InputManager() {
     private val log = KotlinLogging.logger {}
     
-    protected var window: Long = MemoryUtil.NULL
-        private set
+    private var window: Long = MemoryUtil.NULL
     
     var width: Int = width
         private set
@@ -47,7 +47,7 @@ abstract class Application(width: Int, height: Int): InputManager() {
     lateinit var gui: Gui
     
     fun run() {
-        log.info { "LWJGL ${Version.getVersion()} Application Starting" }
+        log.info { "LWJGL ${Version.getVersion()} GLFWManager Starting" }
         
         try {
             init(width, height, "Hexasphere")
@@ -238,11 +238,14 @@ abstract class Application(width: Int, height: Int): InputManager() {
     override fun checkForInputEvents() = GLFW.glfwPollEvents()
     override fun setInputMode(mode: Int, value: Int) = GLFW.glfwSetInputMode(window, mode, value)
     override fun setCursorPosition(x: Double, y: Double) = GLFW.glfwSetCursorPos(window, x, y)
+    override fun getCursorPosition(x: DoubleBuffer, y: DoubleBuffer) {
+        GLFW.glfwGetCursorPos(window, x, y)
+    }
     
-    abstract fun create()
-    abstract fun init()
-    abstract fun render()
-    abstract fun cleanup()
+    protected abstract fun create()
+    protected abstract fun init()
+    protected abstract fun render()
+    protected abstract fun cleanup()
     
-    open fun resize(width: Int, height: Int) = Unit
+    protected open fun resize(width: Int, height: Int) = Unit
 }

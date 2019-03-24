@@ -361,17 +361,16 @@ fun MapGenerationSettings.generateTerrain(map: Array<MapGenTile>, elevations: Ma
                             TerrainShape.CoastTerrainShape,
                             TerrainMajorFeature.NoMajorFeature,
                             arrayOf())
-                    //                h < -0.025 -> Biome.OCEAN
                     else                                                            -> GenTerrain(
                             TerrainType.WaterTerrainType,
                             TerrainShape.OceanTerrainShape,
                             TerrainMajorFeature.NoMajorFeature,
                             arrayOf())
                 }
-            } else if (smallerCount + n / 2 + h < 1.4 / 4) {
+            } else if (smallerCount + n / 2 - h / 2 < 1.4 / 9) {
                 // Can be any Land Type
                 GenTerrain(
-                        TerrainType.GrassTerrainType,
+                        TerrainType.MountainTerrainType,
                         TerrainShape.MountainTerrainShape,
                         TerrainMajorFeature.NoMajorFeature,
                         arrayOf())

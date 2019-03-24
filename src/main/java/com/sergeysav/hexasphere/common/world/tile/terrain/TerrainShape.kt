@@ -9,8 +9,9 @@ interface TerrainShape : TerrainBaseOutput {
     
     object FlatTerrainShape: LandTerrainShape, AbstractTerrainShape(1, 0, 0, 1)
     object HillTerrainShape: LandTerrainShape, AbstractTerrainShape(0, 1, 0, 2)
-    object MountainTerrainShape: TerrainShape, AbstractTerrainShape(-100, -100, -100, 100) { //Mountains cannot have outputs and cannot be moved over
-        override fun compatibleWith(terrainType: TerrainType): Boolean = terrainType is LandTerrainType
+    object MountainTerrainShape: TerrainShape, AbstractTerrainShape(0, 0, 0,
+                                                                    100) { //Mountains cannot have outputs and cannot be moved over
+        override fun compatibleWith(terrainType: TerrainType): Boolean = terrainType is TerrainType.MountainTerrainType
     }
     object CoastTerrainShape: SeaTerrainShape, AbstractTerrainShape(0, 0, 1, 1)
     object OceanTerrainShape: SeaTerrainShape, AbstractTerrainShape(0, 0, 0, 1)

@@ -29,17 +29,18 @@ data class Tile(val tilePolygon: TilePolygon,
             is TerrainMajorFeature.ForestMajorFeature -> 0.2f
             else                                      -> 0f
         }, 1f)
-        is TerrainType.SandTerrainType       -> Triple(0.5f, 0.5f + when (majorFeature) {
+        is TerrainType.SandTerrainType     -> Triple(0.5f, 0.5f + when (majorFeature) {
             is TerrainMajorFeature.ForestMajorFeature -> 0.2f
             else                                      -> 0f
         }, 0f)
-        is TerrainType.WaterTerrainType      -> when (shape) {
+        is TerrainType.WaterTerrainType    -> when (shape) {
             is TerrainShape.CoastTerrainShape -> Triple(0f, 0f, 1f)
             is TerrainShape.OceanTerrainShape -> Triple(0f, 0f, 0.5f)
             is TerrainShape.IceTerrainShape   -> Triple(0.5f, 0.5f, 1f)
             else                              -> Triple(0f, 0f, 0f)
         }
-        else                                 -> Triple(0f, 0f, 0f)
+        is TerrainType.MountainTerrainType -> Triple(0.5f, 0.5f, 0.5f)
+        else                               -> Triple(0f, 0f, 0f)
     }
     
     fun getImageCoords(): Pair<Int, Int> = when (shape) {

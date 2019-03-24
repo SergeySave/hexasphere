@@ -1,6 +1,7 @@
 package com.sergeysav.hexasphere.client.lwjgl
 
 import java.nio.ByteBuffer
+import java.nio.DoubleBuffer
 import java.util.PriorityQueue
 
 /**
@@ -51,11 +52,15 @@ abstract class InputManager {
     abstract fun checkForInputEvents()
     abstract fun setInputMode(mode: Int, value: Int)
     abstract fun setCursorPosition(x: Double, y: Double)
+    abstract fun getCursorPosition(x: DoubleBuffer, y: DoubleBuffer)
     
     class CallbackList<T> {
         internal val callbacks = PriorityQueue<Pair<T, Int>> { p1, p2 -> p1.second.compareTo(p2.second) }
-        
-        fun add(priority: Int = 0, callback: T) = callbacks.add(callback to priority)
+    
+        fun add(priority: Int = 0, callback: T): T {
+            callbacks.add(callback to priority)
+            return callback
+        }
         
         fun remove(callback: T) = callbacks.removeIf { it.first == callback }
     }
