@@ -30,6 +30,15 @@ class Hexasphere(val seed: Long): GLFWManager(800, 600) {
     
     override fun init() {
         openScreen(MainMenuScreen())
+        //
+        //        keyCallbacks.add(priority = -100) { key, _, action, _ ->
+        //            if (key == GLFW.GLFW_KEY_ESCAPE && action == GLFW.GLFW_RELEASE) {
+        //                GLFW.glfwSetWindowShouldClose(window, true) // We will detect this in the rendering loop
+        //                true
+        //            } else {
+        //                false
+        //            }
+        //        }
     
         keyCallbacks.add(priority = 10) { key, _, action, _ ->
             if (key == GLFW.GLFW_KEY_G && action == GLFW.GLFW_RELEASE) {

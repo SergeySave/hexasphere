@@ -45,6 +45,7 @@ class Gui(private val inputManager: InputManager, fontResourceString: String) {
     private val commandBuffer: NkBuffer
     private val nullTexture: NkDrawNullTexture
     private val program: ShaderProgram
+    val smallFont: NkFont
     private val mainFont: NkFont
     val bigFont: NkFont
     private val vao: VertexArrayObject
@@ -261,6 +262,7 @@ class Gui(private val inputManager: InputManager, fontResourceString: String) {
         
         log.trace { "Initializing Nuklear Font" }
         val ttf = IOUtil.ioResourceToByteBuffer(fontResourceString, 512 * 1024)
+        smallFont = NkFont.fromTTF(12f, ttf)
         mainFont = NkFont.fromTTF(18f, ttf)
         bigFont = NkFont.fromTTF(36f, ttf)
         Nuklear.nk_style_set_font(context, mainFont.nkFont)
@@ -418,6 +420,8 @@ class Gui(private val inputManager: InputManager, fontResourceString: String) {
         Nuklear.nk_buffer_free(commandBuffer)
     
         mainFont.cleanup()
+        bigFont.cleanup()
+        smallFont.cleanup()
         nkAllocator.alloc()?.free()
         nkAllocator.mfree()?.free()
     }

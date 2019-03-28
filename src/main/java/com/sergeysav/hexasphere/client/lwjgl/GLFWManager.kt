@@ -132,15 +132,6 @@ abstract class GLFWManager(width: Int, height: Int): InputManager() {
         log.trace { "Adding callbacks" }
         GLFW.glfwSetFramebufferSizeCallback(window) { _, w, h -> this.resize(w, h) }
     
-        keyCallbacks.add(priority = -100) { key, _, action, _ ->
-            if (key == GLFW.GLFW_KEY_ESCAPE && action == GLFW.GLFW_RELEASE) {
-                GLFW.glfwSetWindowShouldClose(window, true) // We will detect this in the rendering loop
-                true
-            } else {
-                false
-            }
-        }
-    
         // Setup a key callback. It will be called every time a key is pressed, repeated or released.
         GLFW.glfwSetKeyCallback(window) { _, key, scanCode, action, mods ->
             handleKeyCallback(key, scanCode, action, mods)
@@ -230,6 +221,7 @@ abstract class GLFWManager(width: Int, height: Int): InputManager() {
     }
     
     override fun isKeyPressed(key: Int) = GLFW.glfwGetKey(window, key) == GLFW.GLFW_PRESS
+    override fun isMouseDown(button: Int): Boolean = GLFW.glfwGetMouseButton(window, button) == GLFW.GLFW_PRESS
     override fun setClipboardString(string: ByteBuffer) {
         GLFW.glfwSetClipboardString(window, string)
     }

@@ -25,7 +25,7 @@ class FPSGuiWindow: GuiWindow("FPS") {
                        Nuklear.NK_WINDOW_NO_INPUT or
                                Nuklear.NK_WINDOW_ROM or
                                Nuklear.NK_WINDOW_NO_SCROLLBAR) {
-                    dynamicRow(30f, 1) {
+                    dynamicRow(1, 30f) {
                         label("FPS: ${(runningAverage.average() * 1).roundToInt()}")
                     }
                 }

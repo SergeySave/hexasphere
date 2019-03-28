@@ -56,10 +56,10 @@ class Mesh(private var glDrawingMode: GLDrawingMode, private val useIBOs: Boolea
         indexCount = data.size
     }
     
-    fun draw() {
+    fun draw(numIndices: Int = indexCount) {
         bound {
             if (useIBOs) {
-                GL11.glDrawElements(glDrawingMode.mode, indexCount, GL11.GL_UNSIGNED_INT, 0)
+                GL11.glDrawElements(glDrawingMode.mode, numIndices, GL11.GL_UNSIGNED_INT, 0)
             } else {
                 GL11.glDrawArrays(glDrawingMode.mode, 0, vertexCount)
             }

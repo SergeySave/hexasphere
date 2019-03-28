@@ -12,7 +12,7 @@ import org.lwjgl.system.MemoryStack
  */
 abstract class GuiWindow(val windowName: String) {
     private lateinit var gui: Gui
-    private lateinit var stack: MemoryStack
+    lateinit var stack: MemoryStack
     
     fun nkEditing(gui: Gui, inner: GuiWindow.() -> Unit) {
         MemoryStack.stackPush().use { stack ->
@@ -29,8 +29,9 @@ abstract class GuiWindow(val windowName: String) {
         val background = Background { gui.context.style().window().fixed_background() }
         var windowRect: NkRect? = null
             private set
-        
-        operator fun invoke(x: Float, y: Float, w: Float, h: Float, options: Int, inner: Contents.() -> Unit) {
+    
+        operator fun invoke(x: Float, y: Float, w: Float, h: Float, options: Int, hidden: Boolean = false,
+                            inner: Contents.() -> Unit) {
             if (windowRect == null) {
                 // Create the rectangle that represents
                 windowRect = NkRect.create()
@@ -40,8 +41,15 @@ abstract class GuiWindow(val windowName: String) {
                 Nuklear.nk_begin(gui.context, windowName, windowRect!!, options)
                 Nuklear.nk_end(gui.context)
             } else if (!Nuklear.nk_window_is_closed(gui.context, windowName)) {
+                if (hidden) {
+                    Nuklear.nk_window_show(gui.context, windowName, Nuklear.NK_HIDDEN)
+                } else {
+                    Nuklear.nk_window_show(gui.context, windowName, Nuklear.NK_SHOWN)
+                }
                 if (Nuklear.nk_begin(gui.context, windowName, windowRect!!, options)) {
-                    contents.inner()
+                    if (!hidden) {
+                        contents.inner()
+                    }
                 }
                 Nuklear.nk_end(gui.context)
             }
@@ -52,7 +60,7 @@ abstract class GuiWindow(val windowName: String) {
         fun hidden(inner: () -> Unit) {
             Nuklear.nk_style_push_style_item(gui.context,
                                              item(),
-                                             Nuklear.nk_style_item_hide(item()))
+                                             Nuklear.nk_style_item_hide(NkStyleItem.mallocStack(stack).set(item())))
             inner()
             Nuklear.nk_style_pop_style_item(gui.context)
         }
@@ -71,8 +79,8 @@ abstract class GuiWindow(val windowName: String) {
     
     inner class Contents {
         private val dynamicRow = DynamicRow()
-        
-        fun dynamicRow(height: Float, columns: Int, inner: DynamicRow.() -> Unit) {
+    
+        fun dynamicRow(columns: Int, height: Float = 0f, inner: DynamicRow.() -> Unit) {
             Nuklear.nk_layout_row_dynamic(gui.context, height, columns)
             dynamicRow.inner()
         }

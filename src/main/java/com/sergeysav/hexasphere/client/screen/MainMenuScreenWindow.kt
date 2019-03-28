@@ -23,10 +23,10 @@ class MainMenuScreenWindow: GuiWindow("MainMenuScreen") {
                 window(0f, 0f, width, height,
                        Nuklear.NK_WINDOW_NO_SCROLLBAR) {
                     font(gui.bigFont) {
-                        dynamicRow(100f, 1) {
+                        dynamicRow(1, 100f) {
                             label("Hexasphere", HAlign.CENTER)
                         }
-                        dynamicRow(50f, 1) {
+                        dynamicRow(1, 50f) {
                             button("Play") {
                                 hexasphere.destroyScreen()
                                 hexasphere.openScreen(HexasphereDisplayScreen(hexasphere.linAlgPool, Random.nextLong()))

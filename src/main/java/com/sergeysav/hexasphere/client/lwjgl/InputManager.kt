@@ -47,6 +47,7 @@ abstract class InputManager {
     }
     
     abstract fun isKeyPressed(key: Int): Boolean
+    abstract fun isMouseDown(button: Int): Boolean
     abstract fun setClipboardString(string: ByteBuffer)
     abstract fun getClipboardString(): Long
     abstract fun checkForInputEvents()

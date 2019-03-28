@@ -17,6 +17,7 @@ import com.sergeysav.hexasphere.common.getResourcePath
 import com.sergeysav.hexasphere.common.world.World
 import com.sergeysav.hexasphere.common.world.gen.MapGenerationSettings
 import com.sergeysav.hexasphere.common.world.gen.generate
+import com.sergeysav.hexasphere.common.world.tile.Tile
 import mu.KotlinLogging
 import org.joml.Matrix4f
 import org.lwjgl.glfw.GLFW
@@ -32,6 +33,7 @@ class HexasphereDisplayScreen(val linAlgPool: LinAlgPool, seed: Long): Screen {
     private val log = KotlinLogging.logger {}
     private lateinit var application: Hexasphere
     private lateinit var keyCallback: (Int, Int, Int, Int) -> Boolean
+    private lateinit var mouseCallback: (Int, Int, Int, Double, Double) -> Boolean
     
     private val cameraController: CameraController
     private val worldRenderable: WorldRenderable
@@ -48,6 +50,10 @@ class HexasphereDisplayScreen(val linAlgPool: LinAlgPool, seed: Long): Screen {
                                                               8, 0.3f, 0.5f,
                                                               2, 0.8f, 1.2f, linAlgPool)
     private val fpsGuiWindow = FPSGuiWindow()
+    private val hexSelectedWindow: HexSelectedWindow
+    private var selectedTile: Tile? = null
+    private var mouseWasDown: Boolean = false
+    private var mouseRelease: Boolean = false
     
     
     init {
@@ -72,6 +78,8 @@ class HexasphereDisplayScreen(val linAlgPool: LinAlgPool, seed: Long): Screen {
             stereographicRenderer = SimpleStereographicRenderer(linAlgPool)
         }
         renderer = normalRenderer
+    
+        hexSelectedWindow = HexSelectedWindow(linAlgPool, worldRenderable)
     }
     
     override fun register(application: Hexasphere) {
@@ -84,11 +92,22 @@ class HexasphereDisplayScreen(val linAlgPool: LinAlgPool, seed: Long): Screen {
         GL11.glEnable(GL11.GL_CULL_FACE)
         
         keyCallback = application.keyCallbacks.add(priority = 0) { key, _, action, _ ->
+            if (action == GLFW.GLFW_RELEASE && key == GLFW.GLFW_KEY_ESCAPE) {
+                selectedTile = null
+            }
             if (action == GLFW.GLFW_RELEASE && key == GLFW.GLFW_KEY_R) {
                 if (renderer == normalRenderer) {
                     renderer = stereographicRenderer
                 } else {
                     renderer = normalRenderer
+                }
+            }
+            false
+        }
+        mouseCallback = application.mouseButtonCallbacks.add(priority = 0) { button, action, mods, x, y ->
+            if (action == GLFW.GLFW_RELEASE && button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+                if (mouseWasDown) {
+                    mouseRelease = true
                 }
             }
             false
@@ -135,15 +154,25 @@ class HexasphereDisplayScreen(val linAlgPool: LinAlgPool, seed: Long): Screen {
                                       2 * y[0].toFloat() / application.height - 1,
                                       worldRenderable, cameraController)
         }
+    
+        if (mouseRelease) {
+            selectedTile = mouseoverTile
+        }
+        hexSelectedWindow.layout(application.gui, application.width.toFloat(),
+                                 application.height.toFloat(), selectedTile)
         
         worldRenderable.updateMesh(mouseoverTile)
         
         renderer.render(worldRenderable, cameraController.camera)
+    
+        mouseRelease = false
+        mouseWasDown = application.isMouseDown(GLFW.GLFW_MOUSE_BUTTON_LEFT)
     }
     
     override fun unregister(application: Hexasphere) {
         log.trace { "Unregistering Hexasphere Display Screen" }
         application.keyCallbacks.remove(keyCallback)
+        application.mouseButtonCallbacks.remove(mouseCallback)
     }
     
     override fun cleanup() {
