@@ -38,8 +38,8 @@ class HexasphereDisplayScreen(val linAlgPool: LinAlgPool, seed: Long): Screen {
     private val cameraController: CameraController
     private val worldRenderable: WorldRenderable
     private val world: World
-    private lateinit var normalRenderer: NormalRenderer
-    private lateinit var stereographicRenderer: SimpleStereographicRenderer
+    private val normalRenderer: NormalRenderer
+    private val stereographicRenderer: SimpleStereographicRenderer
     private var renderer: Renderer
     private val mapGenerationSettings = MapGenerationSettings(31, 30, seed,
                                                               8, 0.8f, 0.5f,
@@ -72,11 +72,15 @@ class HexasphereDisplayScreen(val linAlgPool: LinAlgPool, seed: Long): Screen {
         
         world = mapGenerationSettings.generate()
         worldRenderable = WorldRenderable(world, Matrix4f(), mesh, texture)
-        
+    
+        normalRenderer = NormalRenderer(linAlgPool)
+        stereographicRenderer = SimpleStereographicRenderer(linAlgPool)
+    
         worldRenderable.prepareMesh {
-            normalRenderer = NormalRenderer(linAlgPool)
-            stereographicRenderer = SimpleStereographicRenderer(linAlgPool)
+            normalRenderer.shaderProgram.validate()
+            stereographicRenderer.shaderProgram.validate()
         }
+    
         renderer = normalRenderer
     
         hexSelectedWindow = HexSelectedWindow(linAlgPool, worldRenderable)
@@ -86,7 +90,7 @@ class HexasphereDisplayScreen(val linAlgPool: LinAlgPool, seed: Long): Screen {
         log.trace { "Registering Hexasphere Display Screen" }
         this.application = application
         GL11.glClearColor(0.2f, 0.2f, 0.2f, 0.0f)
-        GL11.glPolygonMode(GL11.GL_FRONT, GL11.GL_FILL)
+        GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL)
         GL11.glPointSize(8f)
         GL11.glEnable(GL11.GL_DEPTH_TEST)
         GL11.glEnable(GL11.GL_CULL_FACE)
@@ -179,9 +183,7 @@ class HexasphereDisplayScreen(val linAlgPool: LinAlgPool, seed: Long): Screen {
         log.trace { "Cleaning up Hexasphere Display Screen" }
         worldRenderable.mesh.cleanup()
         worldRenderable.texture.cleanup()
-        if (this::normalRenderer.isInitialized)
-            normalRenderer.cleanup()
-        if (this::stereographicRenderer.isInitialized)
-            stereographicRenderer.cleanup()
+        normalRenderer.cleanup()
+        stereographicRenderer.cleanup()
     }
 }

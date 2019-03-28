@@ -20,7 +20,7 @@ import org.lwjgl.opengl.GL20
 class SimpleStereographicRenderer(val linAlgPool: LinAlgPool):
         Renderer {
     
-    private val shaderProgram = ShaderProgram()
+    val shaderProgram = ShaderProgram()
 //    private val mat4 = Matrix4f()
 //    private val mat3 = Matrix3f()
 //    private val tempV2 = Vector2f()
