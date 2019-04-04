@@ -2,6 +2,7 @@ package com.sergeysav.hexasphere.common.world.gen
 
 import com.sergeysav.hexasphere.common.chance
 import com.sergeysav.hexasphere.common.world.tile.terrain.TerrainMajorFeature
+import com.sergeysav.hexasphere.common.world.tile.terrain.TerrainMinorFeature
 import com.sergeysav.hexasphere.common.world.tile.terrain.TerrainShape
 import com.sergeysav.hexasphere.common.world.tile.terrain.TerrainType
 import org.joml.Vector3f
@@ -254,7 +255,8 @@ fun MapGenerationSettings.generateElevations(plates: Array<TectonicPlate>): Map<
 //  repeat until no changes have been made:
 //   find tiles where min(adjacent elevation) < elevation
 //   for those tiles set elevation = min(adjacent elevation) + epsilon
-fun MapGenerationSettings.erode(elevations: Map<MapGenTile, Float>): Map<MapGenTile, Float> {
+fun MapGenerationSettings.erode(
+        elevations: Map<MapGenTile, Float>): Pair<Map<MapGenTile, Float>, Map<MapGenTile, Float>> {
     var elevation = elevations.mapValues { (_, value) ->
         if (value < seaLevel) {
             value
@@ -262,32 +264,40 @@ fun MapGenerationSettings.erode(elevations: Map<MapGenTile, Float>): Map<MapGenT
             Float.POSITIVE_INFINITY
         }
     }
+    var riverness = elevations.mapValues { 0f }.toMutableMap()
     
     var iterations = 0
     do {
         var changed = false
-        
+    
+        val newRiverness = elevations.mapValues { 0f }.toMutableMap()
         elevation = elevation.mapValues { (tile, value) ->
+            if (value < seaLevel) {
+                return@mapValues value
+            }
             var newValue = value
             val lowestAdjacent = tile.adjacent.minBy { elevation.getValue(it) }!!
             val minElevation = elevation.getValue(lowestAdjacent)
-            val a = newValue > elevations.getValue(tile)
-            val b = newValue < minElevation
-            if ((a || b) && !(a && b)) {
-                if (a) {
-                    newValue = elevations.getValue(tile)
-                }
-                if (b) {
-                    newValue = minElevation + epsilon
-                }
+            if (newValue > elevations.getValue(tile)) {
+                newValue = elevations.getValue(tile)
+            }
+            if (newValue < minElevation) {
+                newValue = minElevation + epsilon
+                //                newRiverness[lowestAdjacent] = riverness[lowestAdjacent]!! + riverness[tile]!! + 1
+            }
+            newRiverness[lowestAdjacent] = newRiverness[lowestAdjacent]!! + riverness[tile]!! * 3 / 4f + 1
+            if (value != newValue) {
                 changed = true
             }
             newValue
         }
+        riverness = newRiverness
         iterations++
     } while (changed && iterations < maxErosionIters)
     
-    return elevation
+    erosionIterations = iterations
+    
+    return elevation to riverness
 }
 
 fun MapGenerationSettings.generateHeat(map: Array<MapGenTile>, elevations: Map<MapGenTile, Float>): Map<MapGenTile, Float> {
@@ -334,8 +344,56 @@ fun MapGenerationSettings.generateMoisture(map: Array<MapGenTile>): Map<MapGenTi
     return moisture
 }
 
-fun MapGenerationSettings.generateTerrain(map: Array<MapGenTile>, elevations: Map<MapGenTile, Float>, temperatures: Map<MapGenTile,  Float>, moisture: Map<MapGenTile, Float>): Map<MapGenTile, GenTerrain> {
+fun MapGenerationSettings.generateRivers(elevations: Map<MapGenTile, Float>, riverness: Map<MapGenTile, Float>,
+                                         moisture: Map<MapGenTile, Float>): Map<MapGenTile, Boolean> {
+    val passes = riverness.mapValues { (tile, r) -> r * moisture.getValue(tile) * moisture.getValue(tile) }
+            .filter { (_, r) -> r > 0 }
+            .filter { (tile, _) -> elevations.getValue(tile) > 0 }.toMutableMap()
+    var rSum = passes.values.sum().toDouble()
+    val rivers = riverness.mapValues { false }.toMutableMap()
+    var i = 0
+    while (i < numRivers && rSum > 0 && passes.isNotEmpty()) {
+        var startVal = random.nextDouble(rSum)
+        var river = passes.keys.first()
+        for ((tile, r) in passes) {
+            startVal -= r
+            if (startVal <= 0) {
+                river = tile
+                break
+            }
+        }
+        // create river from riverStart
+        // run a river until it reaches the ocean or another river
+        val newRiver = mutableListOf<MapGenTile>()
+        while (elevations.getValue(river) > 0 && !rivers.getValue(river)) {
+            //Set this tile as a river tile and update counter things
+            newRiver.add(river)
+            if (passes.containsKey(river)) {
+                rSum -= passes.getValue(river)
+            }
+            passes.remove(river)
+            
+            //Move downstream
+            val lowestAdjacent = river.adjacent.minBy {
+                elevations.getValue(it) - if (rivers.getValue(it)) 10000 else 0
+            }!!
+            river = lowestAdjacent
+        }
+        if (newRiver.size >= minRiverLength) {
+            newRiver.forEach { rivers[it] = true }
+            i++
+        }
+    }
+    return rivers
+}
+
+fun MapGenerationSettings.generateTerrain(map: Array<MapGenTile>,
+                                          elevations: Map<MapGenTile, Float>,
+                                          temperatures: Map<MapGenTile, Float>,
+                                          moisture: Map<MapGenTile, Float>,
+                                          riverness: Map<MapGenTile, Float>): Map<MapGenTile, GenTerrain> {
     val terrain = mutableMapOf<MapGenTile, GenTerrain>()
+    val rivers = generateRivers(elevations, riverness, moisture)
     linAlgPool.vec3 { vec ->
         map.forEach {
             val h = elevations.getValue(it)
@@ -348,7 +406,14 @@ fun MapGenerationSettings.generateTerrain(map: Array<MapGenTile>, elevations: Ma
             val smallerCount = it.adjacent.count { adj -> elevations.getValue(adj) <= h }.toDouble() / it.adjacent.size
             val isCoastal = it.adjacent.any { adj -> elevations.getValue(adj) >= 0 }
             val isCoastal2 = it.adjacent.any { adj -> adj.adjacent.any { adj2 -> elevations.getValue(adj2) >= 0 } }
-            
+            //            val riverStuffs = it.adjacent.map { adj -> riverness.getValue(adj) }.sortedDescending()
+    
+            val minorFeatures = mutableListOf<TerrainMinorFeature>()
+    
+            if (rivers.getValue(it)) {
+                minorFeatures.add(TerrainMinorFeature.RiverFeature)
+            }
+    
             terrain[it] = if (h < 0) {
                 when {
                     t < 0.25                                                        -> GenTerrain(
@@ -367,7 +432,8 @@ fun MapGenerationSettings.generateTerrain(map: Array<MapGenTile>, elevations: Ma
                             TerrainMajorFeature.NoMajorFeature,
                             arrayOf())
                 }
-            } else if (smallerCount + n / 2 - h / 2 < 1.4 / 9) {
+            } else if (smallerCount + n / 2 - h / 2 < 1.4 / 9 && !minorFeatures.contains(
+                            TerrainMinorFeature.RiverFeature)) {
                 // Can be any Land Type
                 GenTerrain(
                         TerrainType.MountainTerrainType,
@@ -380,17 +446,17 @@ fun MapGenerationSettings.generateTerrain(map: Array<MapGenTile>, elevations: Ma
                             TerrainType.GrassTerrainType,
                             TerrainShape.HillTerrainShape,
                             TerrainMajorFeature.NoMajorFeature,
-                            arrayOf())
+                            minorFeatures.toTypedArray())
                     random.chance(1 / 4.0) -> GenTerrain(
                             TerrainType.GrassTerrainType,
                             TerrainShape.FlatTerrainShape,
                             TerrainMajorFeature.NoMajorFeature,
-                            arrayOf())
+                            minorFeatures.toTypedArray())
                     else                   -> GenTerrain(
                             TerrainType.GrassTerrainType,
                             TerrainShape.FlatTerrainShape,
                             TerrainMajorFeature.RainforestMajorFeature,
-                            arrayOf())
+                            minorFeatures.toTypedArray())
                 }
             } else if (0.45 * t < m && t > 0.4) {
                 // Can be any Land Type
@@ -399,17 +465,17 @@ fun MapGenerationSettings.generateTerrain(map: Array<MapGenTile>, elevations: Ma
                             TerrainType.GrassTerrainType,
                             TerrainShape.HillTerrainShape,
                             TerrainMajorFeature.NoMajorFeature,
-                            arrayOf())
+                            minorFeatures.toTypedArray())
                     random.chance(1 / 4.0) -> GenTerrain(
                             TerrainType.GrassTerrainType,
                             TerrainShape.FlatTerrainShape,
                             TerrainMajorFeature.NoMajorFeature,
-                            arrayOf())
+                            minorFeatures.toTypedArray())
                     else                   -> GenTerrain(
                             TerrainType.GrassTerrainType,
                             TerrainShape.FlatTerrainShape,
                             TerrainMajorFeature.ForestMajorFeature,
-                            arrayOf())
+                            minorFeatures.toTypedArray())
                 }
             } else if (0.35 * t < m) {
                 if (t > 0.5) {
@@ -420,7 +486,8 @@ fun MapGenerationSettings.generateTerrain(map: Array<MapGenTile>, elevations: Ma
                             } else {
                                 TerrainShape.HillTerrainShape
                             },
-                            TerrainMajorFeature.NoMajorFeature, arrayOf())
+                            TerrainMajorFeature.NoMajorFeature,
+                            minorFeatures.toTypedArray())
                 } else {
                     GenTerrain(
                             TerrainType.PermafrostTerrainType,
@@ -429,7 +496,8 @@ fun MapGenerationSettings.generateTerrain(map: Array<MapGenTile>, elevations: Ma
                             } else {
                                 TerrainShape.HillTerrainShape
                             },
-                            TerrainMajorFeature.NoMajorFeature, arrayOf())
+                            TerrainMajorFeature.NoMajorFeature,
+                            minorFeatures.toTypedArray())
                 }
             } else {
                 if (t > 0.4) {
@@ -437,13 +505,13 @@ fun MapGenerationSettings.generateTerrain(map: Array<MapGenTile>, elevations: Ma
                             TerrainType.SandTerrainType,
                             TerrainShape.FlatTerrainShape,
                             TerrainMajorFeature.ForestMajorFeature,
-                            arrayOf())
+                            minorFeatures.toTypedArray())
                 } else {
                     GenTerrain(
                             TerrainType.PermafrostTerrainType,
                             TerrainShape.FlatTerrainShape,
                             TerrainMajorFeature.ForestMajorFeature,
-                            arrayOf())
+                            minorFeatures.toTypedArray())
                 }
             }
         }

@@ -48,7 +48,8 @@ class HexasphereDisplayScreen(val linAlgPool: LinAlgPool, seed: Long): Screen {
                                                               0.65, 0.05f,
                                                               8, 0.3f, 0.5f,
                                                               8, 0.3f, 0.5f,
-                                                              2, 0.8f, 1.2f, linAlgPool)
+                                                              2, 0.8f, 1.2f, linAlgPool,
+                                                              50)
     private val fpsGuiWindow = FPSGuiWindow()
     private val hexSelectedWindow: HexSelectedWindow
     private var selectedTile: Tile? = null

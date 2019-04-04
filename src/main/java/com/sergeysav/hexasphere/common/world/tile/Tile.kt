@@ -19,28 +19,33 @@ data class Tile(val tilePolygon: TilePolygon,
                 val majorFeature: TerrainMajorFeature,
                 val minorFeatures: Array<TerrainMinorFeature>) {
     
-    fun getColoring(): Triple<Float, Float, Float> = when (type) {
-        is TerrainType.GrassTerrainType      -> Triple(0f, 1f - when (majorFeature) {
-            is TerrainMajorFeature.ForestMajorFeature     -> 0.2f
-            is TerrainMajorFeature.RainforestMajorFeature -> 0.4f
-            else                                          -> 0f
-        }, 0f)
-        is TerrainType.PermafrostTerrainType -> Triple(1f, 1f - when (majorFeature) {
-            is TerrainMajorFeature.ForestMajorFeature -> 0.2f
-            else                                      -> 0f
-        }, 1f)
-        is TerrainType.SandTerrainType     -> Triple(0.5f, 0.5f + when (majorFeature) {
-            is TerrainMajorFeature.ForestMajorFeature -> 0.2f
-            else                                      -> 0f
-        }, 0f)
-        is TerrainType.WaterTerrainType    -> when (shape) {
-            is TerrainShape.CoastTerrainShape -> Triple(0f, 0f, 1f)
-            is TerrainShape.OceanTerrainShape -> Triple(0f, 0f, 0.5f)
-            is TerrainShape.IceTerrainShape   -> Triple(0.5f, 0.5f, 1f)
-            else                              -> Triple(0f, 0f, 0f)
+    fun getColoring(): Triple<Float, Float, Float> {
+        if (minorFeatures.contains(TerrainMinorFeature.RiverFeature)) {
+            return Triple(0f, 0f, 0f)
         }
-        is TerrainType.MountainTerrainType -> Triple(0.5f, 0.5f, 0.5f)
-        else                               -> Triple(0f, 0f, 0f)
+        return when (type) {
+            is TerrainType.GrassTerrainType      -> Triple(0f, 1f - when (majorFeature) {
+                is TerrainMajorFeature.ForestMajorFeature     -> 0.2f
+                is TerrainMajorFeature.RainforestMajorFeature -> 0.4f
+                else                                          -> 0f
+            }, 0f)
+            is TerrainType.PermafrostTerrainType -> Triple(1f, 1f - when (majorFeature) {
+                is TerrainMajorFeature.ForestMajorFeature -> 0.2f
+                else                                      -> 0f
+            }, 1f)
+            is TerrainType.SandTerrainType       -> Triple(0.5f, 0.5f + when (majorFeature) {
+                is TerrainMajorFeature.ForestMajorFeature -> 0.2f
+                else                                      -> 0f
+            }, 0f)
+            is TerrainType.WaterTerrainType      -> when (shape) {
+                is TerrainShape.CoastTerrainShape -> Triple(0f, 0f, 1f)
+                is TerrainShape.OceanTerrainShape -> Triple(0f, 0f, 0.5f)
+                is TerrainShape.IceTerrainShape   -> Triple(0.5f, 0.5f, 1f)
+                else                              -> Triple(0f, 0f, 0f)
+            }
+            is TerrainType.MountainTerrainType   -> Triple(0.5f, 0.5f, 0.5f)
+            else                                 -> Triple(0f, 0f, 0f)
+        }
     }
     
     fun getImageCoords(): Pair<Int, Int> = when (shape) {

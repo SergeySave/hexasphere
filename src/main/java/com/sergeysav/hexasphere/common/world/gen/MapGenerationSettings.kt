@@ -24,9 +24,11 @@ data class MapGenerationSettings(val size: Int, val plates: Int, val seed: Long,
                                  val heatOctaves: Int, val heatAScale: Float,
                                  val heatFScale: Float, val moistureOctaves: Int,
                                  val moistureAScale: Float, val moistureFScale: Float, val biomeOctaves: Int,
-                                 val biomeAScale: Float, val biomeFScale: Float, val linAlgPool: LinAlgPool) {
+                                 val biomeAScale: Float, val biomeFScale: Float, val linAlgPool: LinAlgPool,
+                                 val numRivers: Int, val minRiverLength: Int = size / 4) {
     
     var seaLevel = 0f
+    var erosionIterations = 0
     
     val maxErosionIters = size * 10
     val random: Random = Random(seed)
@@ -77,7 +79,8 @@ fun MapGenerationSettings.generate(): World {
     seaLevel = 0f
     
     log.trace { "Simulating Erosion" }
-    elevations = erode(elevations)
+    val (e, riverness) = erode(elevations)
+    elevations = e
     
     log.trace { "Generating Heap Map" }
     val heat = generateHeat(map, elevations)
@@ -86,7 +89,7 @@ fun MapGenerationSettings.generate(): World {
     val moisture = generateMoisture(map)
     
     log.trace { "Generating Terrain" }
-    val terrain = generateTerrain(map, elevations, heat, moisture)
+    val terrain = generateTerrain(map, elevations, heat, moisture, riverness)
     return World(map.map { baseTile ->
         val v = Vector3f()
     
