@@ -1,4 +1,4 @@
-package com.sergeysav.hexasphere.client.nuklear
+package com.sergeysav.hexasphere.common
 
 import com.sergeysav.hexasphere.Hexasphere
 import org.lwjgl.BufferUtils
@@ -29,7 +29,7 @@ object IOUtil {
      * @throws IOException if an IO error occurs
      */
     @Throws(IOException::class)
-    fun ioResourceToByteBuffer(resource: String, bufferSize: Int): ByteBuffer {
+    fun readResourceToBuffer(resource: String, bufferSize: Int): ByteBuffer {
         var buffer: ByteBuffer = BufferUtils.createByteBuffer(0)
         
         val path = Paths.get(resource)
@@ -40,7 +40,7 @@ object IOUtil {
                 }
             }
         } else {
-            Hexasphere::class.java.classLoader.getResourceAsStream(resource)!!.use { source ->
+            Hexasphere::class.java.getResourceAsStream(resource)!!.use { source ->
                 Channels.newChannel(source).use { rbc ->
                     buffer = createByteBuffer(bufferSize)
                     

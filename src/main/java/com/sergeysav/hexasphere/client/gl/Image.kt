@@ -1,5 +1,6 @@
 package com.sergeysav.hexasphere.client.gl
 
+import com.sergeysav.hexasphere.common.IOUtil
 import org.lwjgl.opengl.GL11
 import org.lwjgl.opengl.GL20
 import org.lwjgl.opengl.GL30
@@ -11,7 +12,7 @@ import java.nio.ByteBuffer
  *
  * @constructor Creates a new Image
  */
-class Image(path: String, flipY: Boolean = true) {
+class Image(bytes: ByteBuffer, flipY: Boolean = true) {
     val data: ByteBuffer
     val width: Int
     val height: Int
@@ -22,7 +23,7 @@ class Image(path: String, flipY: Boolean = true) {
         val h = IntArray(1)
         val c = IntArray(1)
         STBImage.stbi_set_flip_vertically_on_load(flipY)
-        data = STBImage.stbi_load(path, w, h, c, 0)!!
+        data = STBImage.stbi_load_from_memory(bytes, w, h, c, 0)!!
         width = w[0]
         height = h[0]
         channels = c[0]
@@ -70,7 +71,7 @@ fun Image.Companion.createTexture(path: String,
                                   minInterp: TextureInterpolationMode = TextureInterpolationMode.BI_MIPMAP_LINEAR,
                                   maxInterp: TextureInterpolationMode = TextureInterpolationMode.BI_MIPMAP_LINEAR,
                                   generateMipmaps: Boolean = false): Texture2D {
-    val image = Image(path, flipY)
+    val image = Image(IOUtil.readResourceToBuffer(path, 1000), flipY)
     val texture = image.createTexture(imageMode, glMode, xMode, yMode, clampColor, minInterp, maxInterp, generateMipmaps)
     image.free()
     return texture

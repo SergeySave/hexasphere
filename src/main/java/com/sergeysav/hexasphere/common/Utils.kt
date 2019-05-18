@@ -7,7 +7,7 @@ import org.joml.Vector3f
 import org.joml.Vector3fc
 import org.lwjgl.opengl.GL20
 import org.lwjgl.system.MemoryStack
-import java.io.File
+import java.io.IOException
 import java.util.Scanner
 import kotlin.random.Random
 
@@ -23,7 +23,7 @@ fun loadResource(fileName: String): String {
     }
 }
 
-fun getResourcePath(fileName: String): String = File(Hexasphere::class.java.getResource(fileName).toURI()).absolutePath
+fun getResourceStream(resource: String) = Hexasphere::class.java.getResourceAsStream(resource) ?: throw IOException("Resource $resource not found")
 
 fun Matrix3f.setUniform(uniformId: Int) {
     MemoryStack.stackPush().use { stack ->

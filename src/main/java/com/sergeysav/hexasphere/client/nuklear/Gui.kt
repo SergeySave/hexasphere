@@ -8,6 +8,7 @@ import com.sergeysav.hexasphere.client.gl.VertexArrayObject
 import com.sergeysav.hexasphere.client.gl.VertexBufferObject
 import com.sergeysav.hexasphere.client.gl.bound
 import com.sergeysav.hexasphere.client.lwjgl.InputManager
+import com.sergeysav.hexasphere.common.IOUtil
 import mu.KotlinLogging
 import org.lwjgl.glfw.GLFW
 import org.lwjgl.nuklear.NkAllocator
@@ -261,7 +262,7 @@ class Gui(private val inputManager: InputManager, fontResourceString: String) {
         }
         
         log.trace { "Initializing Nuklear Font" }
-        val ttf = IOUtil.ioResourceToByteBuffer(fontResourceString, 512 * 1024)
+        val ttf = IOUtil.readResourceToBuffer(fontResourceString, 512 * 1024)
         smallFont = NkFont.fromTTF(12f, ttf)
         mainFont = NkFont.fromTTF(18f, ttf)
         bigFont = NkFont.fromTTF(36f, ttf)

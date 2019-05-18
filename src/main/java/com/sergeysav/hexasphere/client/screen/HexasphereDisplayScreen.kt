@@ -13,7 +13,6 @@ import com.sergeysav.hexasphere.client.gl.createTexture
 import com.sergeysav.hexasphere.client.world.WorldRenderable
 import com.sergeysav.hexasphere.common.LinAlgPool
 import com.sergeysav.hexasphere.common.ZERO
-import com.sergeysav.hexasphere.common.getResourcePath
 import com.sergeysav.hexasphere.common.world.World
 import com.sergeysav.hexasphere.common.world.gen.MapGenerationSettings
 import com.sergeysav.hexasphere.common.world.gen.generate
@@ -67,8 +66,8 @@ class HexasphereDisplayScreen(val linAlgPool: LinAlgPool, seed: Long): Screen {
         
         log.trace { "Creating Hexasphere Mesh" }
         val mesh = Mesh(GLDrawingMode.TRIANGLES, true)
-        
-        val texture = Image.createTexture(getResourcePath("/shapes/together.png"), GL11.GL_RGB, GL11.GL_RGB,
+    
+        val texture = Image.createTexture("/shapes/together.png", GL11.GL_RGB, GL11.GL_RGB,
                                           generateMipmaps = true)
         
         world = mapGenerationSettings.generate()
