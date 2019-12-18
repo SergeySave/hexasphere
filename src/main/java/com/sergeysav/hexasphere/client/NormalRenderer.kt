@@ -20,13 +20,18 @@ import kotlin.math.min
  */
 class NormalRenderer(val linAlgPool: LinAlgPool) : Renderer {
     val shaderProgram = ShaderProgram()
+    val triangleShader = ShaderProgram()
     
     init {
         shaderProgram.createVertexShader(loadResource("/vertex.glsl"))
         shaderProgram.createFragmentShader(loadResource("/fragment.glsl"))
         shaderProgram.link()
-        
+
         GL20.glUniform1i(shaderProgram.getUniform("texture1"), 0)
+    
+        triangleShader.createVertexShader(loadResource("/model.vertex.glsl"))
+        triangleShader.createFragmentShader(loadResource("/model.fragment.glsl"))
+        triangleShader.link()
     }
     
     override fun render(worldRenderable: WorldRenderable, camera: Camera) {
@@ -36,6 +41,11 @@ class NormalRenderer(val linAlgPool: LinAlgPool) : Renderer {
                 worldRenderable.modelMatrix.setUniform(shaderProgram.getUniform("uModel"))
                 worldRenderable.mesh.draw()
             }
+        }
+        triangleShader.bound {
+            camera.combined.setUniform(triangleShader.getUniform("uCamera"))
+            GL20.glUniform3f(triangleShader.getUniform("viewPos"), camera.position.x(), camera.position.y(), camera.position.z())
+            worldRenderable.flatInstanceRenderer.draw(triangleShader)
         }
     }
     
@@ -66,5 +76,6 @@ class NormalRenderer(val linAlgPool: LinAlgPool) : Renderer {
     
     override fun cleanup() {
         shaderProgram.cleanup()
+        triangleShader.cleanup()
     }
 }

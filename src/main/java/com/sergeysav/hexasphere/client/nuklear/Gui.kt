@@ -65,7 +65,7 @@ class Gui(private val inputManager: InputManager, fontResourceString: String) {
             .flip()
     
     private fun setStyle() {
-        context.style { style ->
+        context.style().also { style ->
             style.button { button ->
                 button.normal().data().color().a(0)
                 button.hover().data().color().a(0)
@@ -182,7 +182,7 @@ class Gui(private val inputManager: InputManager, fontResourceString: String) {
         Nuklear.nk_init(context, nkAllocator, null)
         
         log.trace { "Initializing Nuklear Clipboard" }
-        context.clip {
+        context.clip().also {
             it.copy { _, text, len ->
                 if (len == 0) return@copy
                 MemoryStack.stackPush().use { stack ->

@@ -17,20 +17,12 @@ import org.lwjgl.opengl.GL20
  *
  * @constructor Creates a new NormalRenderer
  */
-class SimpleStereographicRenderer(val linAlgPool: LinAlgPool):
-        Renderer {
+class SimpleStereographicRenderer(val linAlgPool: LinAlgPool): Renderer {
     
     val shaderProgram = ShaderProgram()
-//    private val mat4 = Matrix4f()
-//    private val mat3 = Matrix3f()
-//    private val tempV2 = Vector2f()
-//    private val tempV3 = Vector3f()
-//    private val temp2V3 = Vector3f()
-//    private val tempV4 = Vector4f()
     
     init {
-        shaderProgram.createVertexShader(
-                loadResource("/stereographic_simple.vertex.glsl"))
+        shaderProgram.createVertexShader(loadResource("/stereographic_simple.vertex.glsl"))
         shaderProgram.createFragmentShader(loadResource("/fragment.glsl"))
         shaderProgram.link()
     

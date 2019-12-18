@@ -4,6 +4,7 @@ import com.sergeysav.hexasphere.Hexasphere
 import com.sergeysav.hexasphere.client.NormalRenderer
 import com.sergeysav.hexasphere.client.Renderer
 import com.sergeysav.hexasphere.client.SimpleStereographicRenderer
+import com.sergeysav.hexasphere.client.assimp.AssimpUtils
 import com.sergeysav.hexasphere.client.camera.Camera
 import com.sergeysav.hexasphere.client.camera.CameraController
 import com.sergeysav.hexasphere.client.gl.GLDrawingMode
@@ -71,7 +72,10 @@ class HexasphereDisplayScreen(val linAlgPool: LinAlgPool, seed: Long): Screen {
                                           generateMipmaps = true)
         
         world = mapGenerationSettings.generate()
-        worldRenderable = WorldRenderable(world, Matrix4f(), mesh, texture)
+    
+        val flatModel = AssimpUtils.loadModel("/triangle/triangle.obj")
+    
+        worldRenderable = WorldRenderable(world, Matrix4f(), mesh, texture, flatModel.meshes[0])
     
         normalRenderer = NormalRenderer(linAlgPool)
         stereographicRenderer = SimpleStereographicRenderer(linAlgPool)
@@ -185,5 +189,6 @@ class HexasphereDisplayScreen(val linAlgPool: LinAlgPool, seed: Long): Screen {
         worldRenderable.texture.cleanup()
         normalRenderer.cleanup()
         stereographicRenderer.cleanup()
+        worldRenderable.cleanup()
     }
 }

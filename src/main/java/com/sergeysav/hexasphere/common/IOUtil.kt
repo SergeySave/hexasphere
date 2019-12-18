@@ -61,4 +61,12 @@ object IOUtil {
         return buffer
     }
     
+    fun getResourcePath(resource: String): String {
+        val path = Paths.get(resource)
+        return if (Files.isReadable(path)) {
+            path.toAbsolutePath().toString()
+        } else {
+            Hexasphere::class.java.getResource(resource).path
+        }
+    }
 }

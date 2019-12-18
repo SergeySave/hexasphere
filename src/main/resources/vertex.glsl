@@ -11,7 +11,7 @@ out vec2 outUV; // output a uv to the fragment shader
 
 void main()
 {
-    gl_Position = uCamera * uModel * vec4(aPos / length(aPos), 1.0);
+    gl_Position = uCamera * uModel * vec4(aPos, 1.0);
     ourColor = aColor; // set ourColor to the input color we got from the vertex data
     outUV = aUV;
 }

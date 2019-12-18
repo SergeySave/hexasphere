@@ -121,8 +121,8 @@ fun MapGenerationSettings.generate(): World {
     
         baseTile.getCenter(v)
         val terr = terrain.getValue(baseTile)
-        Tile(TilePolygon(v,
-                         Array(verts.size) { verts[(direction * it + index) mod verts.size] }),
+        Tile(TilePolygon(v.normalize(),
+                         Array(verts.size) { verts[(direction * it + index) mod verts.size].normalize() }),
              elevations.getValue(baseTile), heat.getValue(baseTile), moisture.getValue(baseTile),
              terr.type, terr.shape, terr.majorFeature, terr.minorFeatures)
     }.toTypedArray())

@@ -7,7 +7,7 @@ import org.lwjgl.opengl.GL20
  * @author sergeys
  */
 inline class Texture2D(val id: Int) {
-    fun bind(textureNum: Int) {
+    fun bind(textureNum: Int = 0) {
         GL20.glActiveTexture(GL20.GL_TEXTURE0 + textureNum)
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, id)
     }
@@ -16,9 +16,9 @@ inline class Texture2D(val id: Int) {
     fun cleanup() = GL11.glDeleteTextures(id)
 }
 
-fun Texture2D.bound(inner: () -> Unit) {
+fun Texture2D.bound(textureNum: Int = 0, inner: () -> Unit) {
     try {
-        bind(0)
+        bind(textureNum)
         inner()
     } finally {
         unbind()

@@ -19,9 +19,6 @@ void main()
 	sphereCoord.xyz /= length(sphereCoord.xyz);
 	// Compute the stereographic projection and apply the camera (scaling) matrix
 	vec3 projection = vec3(sphereCoord.x / (1 - sphereCoord.z), sphereCoord.y / (1 - sphereCoord.z), 1.0);
-//	// Output this position
-//    gl_Position = vec4(projection.xy / projection.z, sphereCoord.z, 1.0);
-//    ourColor = aColor; // set ourColor to the input color we got from the vertex data
 
 	vec4 result = vec4(uCamera * projection, 1.0);
 	result.z = sphereCoord.z;

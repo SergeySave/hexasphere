@@ -1,6 +1,7 @@
 package com.sergeysav.hexasphere.client.gl
 
 import com.sergeysav.hexasphere.common.IOUtil
+import mu.KotlinLogging
 import org.lwjgl.opengl.GL11
 import org.lwjgl.opengl.GL20
 import org.lwjgl.opengl.GL30
@@ -33,10 +34,12 @@ class Image(bytes: ByteBuffer, flipY: Boolean = true) {
         STBImage.stbi_image_free(data)
     }
     
-    companion object
+    companion object {
+        val logger = KotlinLogging.logger {  }
+    }
 }
 
-fun Image.createTexture(imageMode: Int, glMode: Int,
+fun Image.createTexture(imageMode: Int? = null, glMode: Int? = null,
                         xMode: TextureWrapMode = TextureWrapMode.CLAMP_TO_EDGE,
                         yMode: TextureWrapMode = xMode,
                         clampColor: FloatArray? = null,
@@ -45,8 +48,21 @@ fun Image.createTexture(imageMode: Int, glMode: Int,
                         generateMipmaps: Boolean = false): Texture2D {
     val texture2D = Texture2D(GL11.glGenTextures())
     
+    val imageFormat = imageMode ?: when (channels) {
+        1 -> GL11.GL_RED
+        3 -> GL11.GL_RGB
+        4 -> GL11.GL_RGBA
+        else -> error("Cannot determine Image Format for $channels channels")
+    }
+    val glFormat = glMode ?: when (channels) {
+        1 -> GL11.GL_RED
+        3 -> GL11.GL_RGB
+        4 -> GL11.GL_RGBA
+        else -> error("Cannot determine OpenGL Format for $channels channels")
+    }
+    
     texture2D.bound {
-        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, glMode, width, height, 0, imageMode, GL11.GL_UNSIGNED_BYTE, data)
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, glFormat, width, height, 0, imageFormat, GL11.GL_UNSIGNED_BYTE, data)
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, xMode.id)
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, yMode.id)
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, minInterp.id)
@@ -63,7 +79,7 @@ fun Image.createTexture(imageMode: Int, glMode: Int,
 }
 
 fun Image.Companion.createTexture(path: String,
-                                  imageMode: Int, glMode: Int,
+                                  imageMode: Int? = null, glMode: Int? = null,
                                   flipY: Boolean = true,
                                   xMode: TextureWrapMode = TextureWrapMode.CLAMP_TO_EDGE,
                                   yMode: TextureWrapMode = xMode,
@@ -71,6 +87,7 @@ fun Image.Companion.createTexture(path: String,
                                   minInterp: TextureInterpolationMode = TextureInterpolationMode.BI_MIPMAP_LINEAR,
                                   maxInterp: TextureInterpolationMode = TextureInterpolationMode.BI_MIPMAP_LINEAR,
                                   generateMipmaps: Boolean = false): Texture2D {
+    logger.trace { "Creating Image $path" }
     val image = Image(IOUtil.readResourceToBuffer(path, 1000), flipY)
     val texture = image.createTexture(imageMode, glMode, xMode, yMode, clampColor, minInterp, maxInterp, generateMipmaps)
     image.free()
