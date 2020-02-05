@@ -47,6 +47,12 @@ class AModel(scene: AIScene, basePath: String) {
                 vertices[i * AMesh.floatsPerVertex + 6] = 0f
                 vertices[i * AMesh.floatsPerVertex + 7] = 0f
             }
+            vertices[i * AMesh.floatsPerVertex + 8] = aiMesh.mTangents()!![i].x()
+            vertices[i * AMesh.floatsPerVertex + 9] = aiMesh.mTangents()!![i].y()
+            vertices[i * AMesh.floatsPerVertex + 10] = aiMesh.mTangents()!![i].z()
+            vertices[i * AMesh.floatsPerVertex + 11] = aiMesh.mBitangents()!![i].x()
+            vertices[i * AMesh.floatsPerVertex + 12] = aiMesh.mBitangents()!![i].y()
+            vertices[i * AMesh.floatsPerVertex + 13] = aiMesh.mBitangents()!![i].z()
         }
         
         for (i in 0 until aiMesh.mNumFaces()) {
@@ -60,6 +66,7 @@ class AModel(scene: AIScene, basePath: String) {
             val aiMaterial = AIMaterial.create(scene.mMaterials()!![aiMesh.mMaterialIndex()])
             textures.addAll(AssimpUtils.loadMaterialTextures(aiMaterial, ATexture.Type.DIFFUSE, basePath))
             textures.addAll(AssimpUtils.loadMaterialTextures(aiMaterial, ATexture.Type.SPECULAR, basePath))
+            textures.addAll(AssimpUtils.loadMaterialTextures(aiMaterial, ATexture.Type.NORMAL, basePath))
         }
         
         return AMesh(aiMesh, vertices, indices, textures.toTypedArray())

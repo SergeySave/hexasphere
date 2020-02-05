@@ -4,7 +4,6 @@ import com.sergeysav.hexasphere.Hexasphere
 import com.sergeysav.hexasphere.client.NormalRenderer
 import com.sergeysav.hexasphere.client.Renderer
 import com.sergeysav.hexasphere.client.SimpleStereographicRenderer
-import com.sergeysav.hexasphere.client.assimp.AssimpUtils
 import com.sergeysav.hexasphere.client.camera.Camera
 import com.sergeysav.hexasphere.client.camera.CameraController
 import com.sergeysav.hexasphere.client.gl.GLDrawingMode
@@ -51,7 +50,7 @@ class HexasphereDisplayScreen(val linAlgPool: LinAlgPool, seed: Long): Screen {
                                                               2, 0.8f, 1.2f, linAlgPool,
                                                               50)
     private val fpsGuiWindow = FPSGuiWindow()
-    private val hexSelectedWindow: HexSelectedWindow
+//    private val hexSelectedWindow: HexSelectedWindow
     private var selectedTile: Tile? = null
     private var mouseWasDown: Boolean = false
     private var mouseRelease: Boolean = false
@@ -61,7 +60,7 @@ class HexasphereDisplayScreen(val linAlgPool: LinAlgPool, seed: Long): Screen {
         log.trace { "Creating Hexasphere Display Screen" }
         
         cameraController = CameraController(
-                Camera(Math.toRadians(45.0).toFloat(), 1f, 0.1f, 100f), linAlgPool)
+                Camera(Math.toRadians(45.0).toFloat(), 1f, 0.01f, 10f), linAlgPool)
         cameraController.setPos(2f, 0f, 0f)
         cameraController.lookAt(0f, 0f, 0f)
         
@@ -73,21 +72,21 @@ class HexasphereDisplayScreen(val linAlgPool: LinAlgPool, seed: Long): Screen {
         
         world = mapGenerationSettings.generate()
     
-        val flatModel = AssimpUtils.loadModel("/triangle/triangle.obj")
+//        val flatModel = AssimpUtils.loadModel("/triangle/triangle.obj")
     
-        worldRenderable = WorldRenderable(world, Matrix4f(), mesh, texture, flatModel.meshes[0])
+        worldRenderable = WorldRenderable(world, Matrix4f(), linAlgPool)
     
         normalRenderer = NormalRenderer(linAlgPool)
         stereographicRenderer = SimpleStereographicRenderer(linAlgPool)
     
         worldRenderable.prepareMesh {
-            normalRenderer.shaderProgram.validate()
-            stereographicRenderer.shaderProgram.validate()
+            normalRenderer.shader.validate()
+            stereographicRenderer.shader.validate()
         }
     
         renderer = normalRenderer
     
-        hexSelectedWindow = HexSelectedWindow(linAlgPool, worldRenderable)
+//        hexSelectedWindow = HexSelectedWindow(linAlgPool, worldRenderable)
     }
     
     override fun register(application: Hexasphere) {
@@ -143,8 +142,10 @@ class HexasphereDisplayScreen(val linAlgPool: LinAlgPool, seed: Long): Screen {
             rotateAround(ZERO, up, rightLeft.toFloat())
             rotate(forward, -rotate.toFloat())
             
-            if (camera.position.lengthSquared() < 1.25 * 1.25f) {
-                camera.position.normalize(1.25f)
+            val minLen = 1.1f
+            
+            if (camera.position.lengthSquared() < minLen * minLen) {
+                camera.position.normalize(minLen)
             }
             if (camera.position.lengthSquared() > 8 * 8) {
                 camera.position.normalize(8f)
@@ -166,8 +167,8 @@ class HexasphereDisplayScreen(val linAlgPool: LinAlgPool, seed: Long): Screen {
         if (mouseRelease) {
             selectedTile = mouseoverTile
         }
-        hexSelectedWindow.layout(application.gui, application.width.toFloat(),
-                                 application.height.toFloat(), selectedTile)
+//        hexSelectedWindow.layout(application.gui, application.width.toFloat(),
+//                                 application.height.toFloat(), selectedTile)
         
         worldRenderable.updateMesh(mouseoverTile)
         
@@ -185,8 +186,8 @@ class HexasphereDisplayScreen(val linAlgPool: LinAlgPool, seed: Long): Screen {
     
     override fun cleanup() {
         log.trace { "Cleaning up Hexasphere Display Screen" }
-        worldRenderable.mesh.cleanup()
-        worldRenderable.texture.cleanup()
+//        worldRenderable.mesh.cleanup()
+//        worldRenderable.texture.cleanup()
         normalRenderer.cleanup()
         stereographicRenderer.cleanup()
         worldRenderable.cleanup()

@@ -16,58 +16,66 @@ import org.lwjgl.opengl.GL33
  */
 class TileInstancedMeshRenderer(private val mesh: AMesh, private val startingAttributeIndex: Int) {
     
-    private val vbo = VertexBufferObject()
+    private val matrixVBO = VertexBufferObject()
+    private val colorVBO = VertexBufferObject()
     private var instances: Int = 0
-    private var data = FloatArray(0)
+    private var matrixData = floatArrayOf()
+    private var colorData = floatArrayOf()
     
     fun setData(instances: Int, matrixGetter: (Int)->Matrix4fc, colorGetter: (Int)->Vector4fc) {
         this.instances = instances
         mesh.vao.bound {
-            vbo.bind()
-            data = FloatArray(instances * 4 * 5)
+            colorVBO.bind()
+            colorData = FloatArray(instances * 4 * 1)
             for (i in 0 until instances) {
                 val color = colorGetter(i)
-                data[i * 4 * 5 + 0] = color.x()
-                data[i * 4 * 5 + 1] = color.y()
-                data[i * 4 * 5 + 2] = color.z()
-                data[i * 4 * 5 + 3] = color.w()
-                matrixGetter(i).get(data, i * 4 * 5 + 4)
+                colorData[i * 4 * 1 + 0] = color.x()
+                colorData[i * 4 * 1 + 1] = color.y()
+                colorData[i * 4 * 1 + 2] = color.z()
+                colorData[i * 4 * 1 + 3] = color.w()
             }
-            vbo.setData(data, GLDataUsage.STATIC)
-    
+            colorVBO.setData(colorData, GLDataUsage.STATIC)
+            
             GL30.glEnableVertexAttribArray(startingAttributeIndex)
-            GL30.glVertexAttribPointer(startingAttributeIndex, 4, GL11.GL_FLOAT, false, 5 * 4 * 4, 0 * 4 * 4)
+            GL30.glVertexAttribPointer(startingAttributeIndex, 4, GL11.GL_FLOAT, false, 1 * 4 * 4, 0 * 4 * 4)
             GL33.glVertexAttribDivisor(startingAttributeIndex, 1)
+            
+            matrixVBO.bind()
+            matrixData = FloatArray(instances * 4 * 4)
+            for (i in 0 until instances) {
+                matrixGetter(i).get(matrixData, i * 4 * 4)
+            }
+            matrixVBO.setData(matrixData, GLDataUsage.STATIC)
 
             GL30.glEnableVertexAttribArray(startingAttributeIndex + 1)
-            GL30.glVertexAttribPointer(startingAttributeIndex + 1, 4, GL11.GL_FLOAT, false, 5 * 4 * 4, 1 * 4 * 4)
+            GL30.glVertexAttribPointer(startingAttributeIndex + 1, 4, GL11.GL_FLOAT, false, 4 * 4 * 4, 0 * 4 * 4)
             GL33.glVertexAttribDivisor(startingAttributeIndex + 1, 1)
         
             GL30.glEnableVertexAttribArray(startingAttributeIndex + 2)
-            GL30.glVertexAttribPointer(startingAttributeIndex + 2, 4, GL11.GL_FLOAT, false, 5 * 4 * 4, 2 * 4 * 4)
+            GL30.glVertexAttribPointer(startingAttributeIndex + 2, 4, GL11.GL_FLOAT, false, 4 * 4 * 4, 1 * 4 * 4)
             GL33.glVertexAttribDivisor(startingAttributeIndex + 2, 1)
         
             GL30.glEnableVertexAttribArray(startingAttributeIndex + 3)
-            GL30.glVertexAttribPointer(startingAttributeIndex + 3, 4, GL11.GL_FLOAT, false, 5 * 4 * 4, 3 * 4 * 4)
+            GL30.glVertexAttribPointer(startingAttributeIndex + 3, 4, GL11.GL_FLOAT, false, 4 * 4 * 4, 2 * 4 * 4)
             GL33.glVertexAttribDivisor(startingAttributeIndex + 3, 1)
         
             GL30.glEnableVertexAttribArray(startingAttributeIndex + 4)
-            GL30.glVertexAttribPointer(startingAttributeIndex + 4, 4, GL11.GL_FLOAT, false, 5 * 4 * 4, 4 * 4 * 4)
+            GL30.glVertexAttribPointer(startingAttributeIndex + 4, 4, GL11.GL_FLOAT, false, 4 * 4 * 4, 3 * 4 * 4)
             GL33.glVertexAttribDivisor(startingAttributeIndex + 4, 1)
         }
     }
     
     fun updateColors(colorGetter: (Int) -> Vector4fc) {
         mesh.vao.bound {
-            vbo.bind()
+            colorVBO.bind()
             for (i in 0 until instances) {
                 val color = colorGetter(i)
-                data[i * 4 * 5 + 0] = color.x()
-                data[i * 4 * 5 + 1] = color.y()
-                data[i * 4 * 5 + 2] = color.z()
-                data[i * 4 * 5 + 3] = color.w()
+                colorData[i * 4 * 1 + 0] = color.x()
+                colorData[i * 4 * 1 + 1] = color.y()
+                colorData[i * 4 * 1 + 2] = color.z()
+                colorData[i * 4 * 1 + 3] = color.w()
             }
-            vbo.setData(data, GLDataUsage.STATIC)
+            colorVBO.setData(colorData, GLDataUsage.STATIC)
         }
     }
     
@@ -79,6 +87,10 @@ class TileInstancedMeshRenderer(private val mesh: AMesh, private val startingAtt
     }
     
     fun cleanup() {
-        vbo.cleanup()
+        matrixVBO.cleanup()
+        colorVBO.cleanup()
+        instances = 0
+        matrixData = floatArrayOf()
+        colorData = floatArrayOf()
     }
 }

@@ -1,5 +1,7 @@
 ## Project specific
 unused/
+blender/
+shapes/
 
 ## Java
 *.class

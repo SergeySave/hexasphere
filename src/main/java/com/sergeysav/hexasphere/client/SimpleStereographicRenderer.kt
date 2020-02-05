@@ -3,13 +3,13 @@ package com.sergeysav.hexasphere.client
 import com.sergeysav.hexasphere.client.camera.Camera
 import com.sergeysav.hexasphere.client.camera.CameraController
 import com.sergeysav.hexasphere.client.gl.ShaderProgram
-import com.sergeysav.hexasphere.client.gl.bound
 import com.sergeysav.hexasphere.client.world.WorldRenderable
 import com.sergeysav.hexasphere.common.LinAlgPool
 import com.sergeysav.hexasphere.common.loadResource
 import com.sergeysav.hexasphere.common.setUniform
 import com.sergeysav.hexasphere.common.world.getClosestTileTo
 import com.sergeysav.hexasphere.common.world.tile.Tile
+import org.joml.Vector3f
 import org.lwjgl.opengl.GL20
 
 /**
@@ -19,36 +19,37 @@ import org.lwjgl.opengl.GL20
  */
 class SimpleStereographicRenderer(val linAlgPool: LinAlgPool): Renderer {
     
-    val shaderProgram = ShaderProgram()
+    val shader = ShaderProgram()
+    private val lightDirection = Vector3f(1f, 1f, 1f).normalize()
+    private val cameraOffset = 1.072f
     
     init {
-        shaderProgram.createVertexShader(loadResource("/stereographic_simple.vertex.glsl"))
-        shaderProgram.createFragmentShader(loadResource("/fragment.glsl"))
-        shaderProgram.link()
-    
-        GL20.glUniform1i(shaderProgram.getUniform("texture1"), 0)
+        shader.createVertexShader(loadResource("/stereographic_model.vertex.glsl"))
+        shader.createFragmentShader(loadResource("/stereographic_model.fragment.glsl"))
+        shader.link()
     }
     
     override fun render(worldRenderable: WorldRenderable, camera: Camera) {
-        worldRenderable.texture.bound {
-            shaderProgram.bound {
-                val scaling = camera.position.length() - 1.175f
-                linAlgPool.mat3 { mat3 ->
-                    mat3.scaling(1 / scaling, 1 / scaling * camera.aspect, 1f)
-                    mat3.setUniform(shaderProgram.getUniform("uCamera"))
-                    linAlgPool.mat4 { mat4 ->
-                        mat4.set(mat3.set(camera.right, camera.up, camera.direction).transpose()).mul(worldRenderable.modelMatrix)
-                        mat4.setUniform(shaderProgram.getUniform("uModel"))
-                    }
+        shader.bound {
+            val scaling = camera.position.length() - cameraOffset
+            linAlgPool.mat3 { mat3 ->
+                mat3.scaling(1 / scaling, 1 / scaling * camera.aspect, 1f)
+                mat3.setUniform(shader.getUniform("uCamera"))
+                linAlgPool.mat4 { mat4 ->
+                    mat4.set(mat3.set(camera.right, camera.up, camera.direction).transpose()).mul(worldRenderable.modelMatrix)
+                    mat4.setUniform(shader.getUniform("uModel"))
                 }
-                worldRenderable.mesh.draw()
             }
+            GL20.glUniform3f(shader.getUniform("viewPos"), camera.position.x(), camera.position.y(), camera.position.z())
+            GL20.glUniform3f(shader.getUniform("lightDir"), lightDirection.x(), lightDirection.y(), lightDirection.z())
+            GL20.glUniform1f(shader.getUniform("ambientStrength"), 0.0f)
+            worldRenderable.draw(shader)
         }
     }
     
     override fun getMouseoverTile(x: Float, y: Float, map: WorldRenderable,
                                   cameraController: CameraController): Tile? {
-        val scaling = cameraController.camera.position.length() - 1.175f
+        val scaling = cameraController.camera.position.length() - cameraOffset
         
         return linAlgPool.vec3 { tempV3 ->
             // -y needed to work
@@ -75,6 +76,6 @@ class SimpleStereographicRenderer(val linAlgPool: LinAlgPool): Renderer {
     }
     
     override fun cleanup() {
-        shaderProgram.cleanup()
+        shader.cleanup()
     }
 }

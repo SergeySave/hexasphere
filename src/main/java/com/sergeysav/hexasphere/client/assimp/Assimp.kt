@@ -1,14 +1,32 @@
 package com.sergeysav.hexasphere.client.assimp
 
 import com.sergeysav.hexasphere.client.gl.Image
+import com.sergeysav.hexasphere.client.gl.TextureInterpolationMode
+import com.sergeysav.hexasphere.client.gl.TextureWrapMode
 import com.sergeysav.hexasphere.client.gl.createTexture
 import com.sergeysav.hexasphere.common.IOUtil
 import com.sergeysav.hexasphere.common.fixPath
+import mu.KotlinLogging
+import org.lwjgl.assimp.AIFile
+import org.lwjgl.assimp.AIFileCloseProc
+import org.lwjgl.assimp.AIFileCloseProcI
+import org.lwjgl.assimp.AIFileIO
+import org.lwjgl.assimp.AIFileOpenProc
+import org.lwjgl.assimp.AIFileOpenProcI
+import org.lwjgl.assimp.AIFileReadProc
+import org.lwjgl.assimp.AIFileReadProcI
+import org.lwjgl.assimp.AIFileSeek
+import org.lwjgl.assimp.AIFileSeekI
+import org.lwjgl.assimp.AIFileTellProc
+import org.lwjgl.assimp.AIFileTellProcI
 import org.lwjgl.assimp.AIMaterial
 import org.lwjgl.assimp.AIString
 import org.lwjgl.assimp.Assimp
-import org.lwjgl.assimp.Assimp.aiProcess_Triangulate
+import org.lwjgl.system.MemoryUtil
 import org.lwjgl.system.NativeType
+import java.io.IOException
+import java.nio.ByteBuffer
+import kotlin.math.min
 
 
 /**
@@ -16,12 +34,81 @@ import org.lwjgl.system.NativeType
  */
 object AssimpUtils {
     
+    private val logger = KotlinLogging.logger {  }
     private val textures = mutableMapOf<String, Pair<Int, ATexture>>()
     
-    fun loadModel(filePath: String): AModel {
-        val aiScene = Assimp.aiImportFile(IOUtil.getResourcePath(filePath),
-                                          aiProcess_Triangulate or Assimp.aiProcess_JoinIdenticalVertices)
+    fun loadTileMesh(filePath: String): AMesh {
+        if (!IOUtil.doesResourceExist(filePath)) {
+            logger.info { "Tile Resource Does Not Exist: $filePath" }
+            return loadTileMesh("/missing/missing.obj") // Load the missing tile if the right one does not exist
+        }
+        val model = loadModel(filePath)
+        if (model.meshes.size == 0) {
+            logger.error { "Tile Resource is missing a model: $filePath" }
+            return loadTileMesh("/missing/missing.obj") // Load the missing tile if the right one does not exist
+        }
+        if (model.meshes.size > 1) {
+            logger.warn { "Tile Resource has multiple meshes: $filePath. Using the first mesh." }
+        }
+        return model.meshes[0]
+    }
     
+    fun loadModel(filePath: String): AModel {
+        logger.trace { "Loading Model: $filePath" }
+        val fileIo = AIFileIO.create()
+        val fileOpenProc: AIFileOpenProcI = object: AIFileOpenProc() {
+            override fun invoke(pFileIO: Long, fileName: Long, openMode: Long): Long {
+                val aiFile = AIFile.create()
+                val data: ByteBuffer
+                val fileNameUtf8: String = MemoryUtil.memUTF8(fileName)
+                try {
+                    logger.trace { "Assimp Loading Resource: $fileNameUtf8" }
+                    data = IOUtil.readResourceToBuffer(fileNameUtf8, 8192)
+                } catch (e: IOException) {
+                    throw RuntimeException("Could not open file: $fileNameUtf8")
+                }
+                val fileReadProc: AIFileReadProcI = object: AIFileReadProc() {
+                    override fun invoke(pFile: Long, pBuffer: Long, size: Long, count: Long): Long {
+                        val max = min(data.remaining().toLong(), size * count)
+                        MemoryUtil.memCopy(MemoryUtil.memAddress(data) + data.position(), pBuffer, max)
+                        return max
+                    }
+                }
+                val fileSeekProc: AIFileSeekI = object: AIFileSeek() {
+                    override fun invoke(pFile: Long, offset: Long, origin: Int): Int {
+                        if (origin == Assimp.aiOrigin_CUR) {
+                            data.position(data.position() + offset.toInt())
+                        } else if (origin == Assimp.aiOrigin_SET) {
+                            data.position(offset.toInt())
+                        } else if (origin == Assimp.aiOrigin_END) {
+                            data.position(data.limit() + offset.toInt())
+                        }
+                        return 0
+                    }
+                }
+                val fileTellProc: AIFileTellProcI = object: AIFileTellProc() {
+                    override fun invoke(pFile: Long): Long {
+                        return data.limit().toLong()
+                    }
+                }
+                aiFile.ReadProc(fileReadProc)
+                aiFile.SeekProc(fileSeekProc)
+                aiFile.FileSizeProc(fileTellProc)
+                return aiFile.address()
+            }
+        }
+        val fileCloseProc: AIFileCloseProcI = object: AIFileCloseProc() {
+            override fun invoke(pFileIO: Long, pFile: Long) { /* Nothing to do */
+            }
+        }
+        fileIo[fileOpenProc, fileCloseProc] = MemoryUtil.NULL
+        val aiScene = Assimp.aiImportFileEx(filePath,
+                                            Assimp.aiProcess_JoinIdenticalVertices or
+                                                    Assimp.aiProcess_Triangulate or
+                                                    Assimp.aiProcess_CalcTangentSpace/* or
+                                                    Assimp.aiProcess_OptimizeMeshes*/,
+                                            fileIo)
+     
         if (aiScene == null || aiScene.mFlags() and Assimp.AI_SCENE_FLAGS_INCOMPLETE != 0 || aiScene.mRootNode() == null) {
             error(Assimp.aiGetErrorString() ?: "AssimpUtils.loadModel error")
         }
@@ -47,10 +134,24 @@ object AssimpUtils {
         textures[path] = (count + 1) to aTexture
         aTexture
     } else {
-        val texture = Image.createTexture(path, generateMipmaps = true)
-        val aTexture = ATexture(texture, path, type)
-        textures[path] = 1 to aTexture
-        aTexture
+        if (IOUtil.doesResourceExist(path)) {
+            val texture = if (path == "/MissingImage.png") {
+                Image.createTexture(path,
+                                    generateMipmaps = false,
+                                    minInterp = TextureInterpolationMode.NEAREST,
+                                    maxInterp = TextureInterpolationMode.NEAREST,
+                                    xMode = TextureWrapMode.REPEAT)
+            } else {
+                Image.createTexture(path, generateMipmaps = true)
+            }
+            val aTexture = ATexture(texture, path, type)
+            textures[path] = 1 to aTexture
+            aTexture
+        } else {
+            logger.info { "Texture Resource Does Not Exist: $path" }
+            val aTexture = loadTexture("/MissingImage.png", ATexture.Type.DIFFUSE)
+            ATexture(aTexture.texture2D, aTexture.path, type)
+        }
     }
     
     fun cleanupTexture(aTexture: ATexture) {

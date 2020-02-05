@@ -1,9 +1,7 @@
 package com.sergeysav.hexasphere.common.world.gen
 
-import com.sergeysav.hexasphere.common.chance
 import com.sergeysav.hexasphere.common.world.tile.terrain.TerrainMajorFeature
 import com.sergeysav.hexasphere.common.world.tile.terrain.TerrainMinorFeature
-import com.sergeysav.hexasphere.common.world.tile.terrain.TerrainShape
 import com.sergeysav.hexasphere.common.world.tile.terrain.TerrainType
 import org.joml.Vector3f
 import java.util.LinkedList
@@ -409,110 +407,42 @@ fun MapGenerationSettings.generateTerrain(map: Array<MapGenTile>,
             //            val riverStuffs = it.adjacent.map { adj -> riverness.getValue(adj) }.sortedDescending()
     
             val minorFeatures = mutableListOf<TerrainMinorFeature>()
-    
-            if (rivers.getValue(it)) {
-                minorFeatures.add(TerrainMinorFeature.RiverFeature)
-            }
-    
+            
             terrain[it] = if (h < 0) {
                 when {
                     t < 0.25                                                        -> GenTerrain(
-                            TerrainType.WaterTerrainType,
-                            TerrainShape.IceTerrainShape,
+                            TerrainType.Ice,
                             TerrainMajorFeature.NoMajorFeature,
                             arrayOf())
                     h > (-0.015 + n / 15) || isCoastal || (isCoastal2 && n > -0.15) -> GenTerrain(
-                            TerrainType.WaterTerrainType,
-                            TerrainShape.CoastTerrainShape,
+                            TerrainType.Coast,
                             TerrainMajorFeature.NoMajorFeature,
                             arrayOf())
                     else                                                            -> GenTerrain(
-                            TerrainType.WaterTerrainType,
-                            TerrainShape.OceanTerrainShape,
+                            TerrainType.Ocean,
                             TerrainMajorFeature.NoMajorFeature,
                             arrayOf())
                 }
-            } else if (smallerCount + n / 2 - h / 2 < 1.4 / 9 && !minorFeatures.contains(
-                            TerrainMinorFeature.RiverFeature)) {
+            } else if (smallerCount + n / 2 - h / 2 < 1.4 / 9 && !rivers.getValue(it)) {
                 // Can be any Land Type
                 GenTerrain(
-                        TerrainType.MountainTerrainType,
-                        TerrainShape.MountainTerrainShape,
+                        TerrainType.Mountain,
                         TerrainMajorFeature.NoMajorFeature,
                         arrayOf())
-            } else if (0.85 * t < m && t > 0.5) {
-                when {
-                    random.chance(1 / 5.0) -> GenTerrain(
-                            TerrainType.GrassTerrainType,
-                            TerrainShape.HillTerrainShape,
-                            TerrainMajorFeature.NoMajorFeature,
-                            minorFeatures.toTypedArray())
-                    random.chance(1 / 4.0) -> GenTerrain(
-                            TerrainType.GrassTerrainType,
-                            TerrainShape.FlatTerrainShape,
-                            TerrainMajorFeature.NoMajorFeature,
-                            minorFeatures.toTypedArray())
-                    else                   -> GenTerrain(
-                            TerrainType.GrassTerrainType,
-                            TerrainShape.FlatTerrainShape,
-                            TerrainMajorFeature.RainforestMajorFeature,
-                            minorFeatures.toTypedArray())
-                }
-            } else if (0.45 * t < m && t > 0.4) {
-                // Can be any Land Type
-                when {
-                    random.chance(1 / 5.0) -> GenTerrain(
-                            TerrainType.GrassTerrainType,
-                            TerrainShape.HillTerrainShape,
-                            TerrainMajorFeature.NoMajorFeature,
-                            minorFeatures.toTypedArray())
-                    random.chance(1 / 4.0) -> GenTerrain(
-                            TerrainType.GrassTerrainType,
-                            TerrainShape.FlatTerrainShape,
-                            TerrainMajorFeature.NoMajorFeature,
-                            minorFeatures.toTypedArray())
-                    else                   -> GenTerrain(
-                            TerrainType.GrassTerrainType,
-                            TerrainShape.FlatTerrainShape,
-                            TerrainMajorFeature.ForestMajorFeature,
-                            minorFeatures.toTypedArray())
-                }
-            } else if (0.35 * t < m) {
-                if (t > 0.5) {
-                    GenTerrain(
-                            TerrainType.SandTerrainType,
-                            if (random.chance(0.5)) {
-                                TerrainShape.FlatTerrainShape
-                            } else {
-                                TerrainShape.HillTerrainShape
-                            },
-                            TerrainMajorFeature.NoMajorFeature,
-                            minorFeatures.toTypedArray())
-                } else {
-                    GenTerrain(
-                            TerrainType.PermafrostTerrainType,
-                            if (random.chance(0.5)) {
-                                TerrainShape.FlatTerrainShape
-                            } else {
-                                TerrainShape.HillTerrainShape
-                            },
-                            TerrainMajorFeature.NoMajorFeature,
-                            minorFeatures.toTypedArray())
-                }
             } else {
-                if (t > 0.4) {
-                    GenTerrain(
-                            TerrainType.SandTerrainType,
-                            TerrainShape.FlatTerrainShape,
-                            TerrainMajorFeature.ForestMajorFeature,
-                            minorFeatures.toTypedArray())
+                val terrainGenerationGroup = if (rivers.getValue(it)) {
+                    TerrainGenerationGroup.river.minBy { g -> (g.elevation - h) * (g.elevation - h) +
+                                                              (g.temperature - t) * (g.temperature - t) +
+                                                              (g.moisture - m) * (g.moisture - m) } ?:
+                    error("No Terrain Generation Group")
                 } else {
-                    GenTerrain(
-                            TerrainType.PermafrostTerrainType,
-                            TerrainShape.FlatTerrainShape,
-                            TerrainMajorFeature.ForestMajorFeature,
-                            minorFeatures.toTypedArray())
+                    TerrainGenerationGroup.land.minBy { g -> (g.elevation - h) * (g.elevation - h) +
+                                                             (g.temperature - t) * (g.temperature - t) +
+                                                             (g.moisture - m) * (g.moisture - m) } ?:
+                    error("No Terrain Generation Group")
                 }
+                val (type, major) = terrainGenerationGroup.getter(random)
+                GenTerrain(type, major, minorFeatures.toTypedArray())
             }
         }
     }

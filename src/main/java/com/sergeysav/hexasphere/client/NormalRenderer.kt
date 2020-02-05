@@ -3,13 +3,14 @@ package com.sergeysav.hexasphere.client
 import com.sergeysav.hexasphere.client.camera.Camera
 import com.sergeysav.hexasphere.client.camera.CameraController
 import com.sergeysav.hexasphere.client.gl.ShaderProgram
-import com.sergeysav.hexasphere.client.gl.bound
 import com.sergeysav.hexasphere.client.world.WorldRenderable
 import com.sergeysav.hexasphere.common.LinAlgPool
 import com.sergeysav.hexasphere.common.loadResource
 import com.sergeysav.hexasphere.common.setUniform
 import com.sergeysav.hexasphere.common.world.getClosestTileTo
 import com.sergeysav.hexasphere.common.world.tile.Tile
+import org.joml.Matrix4f
+import org.joml.Vector3f
 import org.lwjgl.opengl.GL20
 import kotlin.math.min
 
@@ -19,33 +20,24 @@ import kotlin.math.min
  * @constructor Creates a new NormalRenderer
  */
 class NormalRenderer(val linAlgPool: LinAlgPool) : Renderer {
-    val shaderProgram = ShaderProgram()
-    val triangleShader = ShaderProgram()
+    val shader = ShaderProgram()
+    private val lightDirection = Vector3f(1f, 1f, 1f).normalize()
+    private val model = Matrix4f()
     
     init {
-        shaderProgram.createVertexShader(loadResource("/vertex.glsl"))
-        shaderProgram.createFragmentShader(loadResource("/fragment.glsl"))
-        shaderProgram.link()
-
-        GL20.glUniform1i(shaderProgram.getUniform("texture1"), 0)
-    
-        triangleShader.createVertexShader(loadResource("/model.vertex.glsl"))
-        triangleShader.createFragmentShader(loadResource("/model.fragment.glsl"))
-        triangleShader.link()
+        shader.createVertexShader(loadResource("/model.vertex.glsl"))
+        shader.createFragmentShader(loadResource("/model.fragment.glsl"))
+        shader.link()
     }
     
     override fun render(worldRenderable: WorldRenderable, camera: Camera) {
-        worldRenderable.texture.bound {
-            shaderProgram.bound {
-                camera.combined.setUniform(shaderProgram.getUniform("uCamera"))
-                worldRenderable.modelMatrix.setUniform(shaderProgram.getUniform("uModel"))
-                worldRenderable.mesh.draw()
-            }
-        }
-        triangleShader.bound {
-            camera.combined.setUniform(triangleShader.getUniform("uCamera"))
-            GL20.glUniform3f(triangleShader.getUniform("viewPos"), camera.position.x(), camera.position.y(), camera.position.z())
-            worldRenderable.flatInstanceRenderer.draw(triangleShader)
+        shader.bound {
+            camera.combined.setUniform(shader.getUniform("uCamera"))
+            GL20.glUniform3f(shader.getUniform("viewPos"), camera.position.x(), camera.position.y(), camera.position.z())
+            GL20.glUniform3f(shader.getUniform("lightDir"), lightDirection.x(), lightDirection.y(), lightDirection.z())
+            GL20.glUniform1f(shader.getUniform("ambientStrength"), 0.0f)
+            model.setUniform(shader.getUniform("uModel"))
+            worldRenderable.draw(shader)
         }
     }
     
@@ -75,7 +67,6 @@ class NormalRenderer(val linAlgPool: LinAlgPool) : Renderer {
     }
     
     override fun cleanup() {
-        shaderProgram.cleanup()
-        triangleShader.cleanup()
+        shader.cleanup()
     }
 }

@@ -7,7 +7,7 @@ layout (location = 4) in vec3 aBiTangent; // the uv variable has attribute posit
 layout (location = 5) in vec4 aColor; // the color variable has attribute position 5
 layout (location = 6) in mat4 aModel; // the model matrix variable has attribute position 6,7,8,9
 
-uniform mat4 uCamera;
+uniform mat3 uCamera;
 uniform mat4 uModel;
 uniform vec3 lightDir;
 uniform vec3 viewPos;
@@ -23,7 +23,7 @@ out VS_OUT {
 
 void main()
 {
-    mat4 modelMatrix = uModel * aModel;
+    mat4 modelMatrix = aModel;
     vs_out.pos = vec3(modelMatrix * vec4(aPos, 1.0));
     vs_out.uv = aUV;
     vs_out.color = aColor;
@@ -39,5 +39,13 @@ void main()
     vs_out.tanViewPos = TBN * viewPos;
     vs_out.tanFragPos = TBN * vs_out.pos;
 
-    gl_Position = uCamera * vec4(vs_out.pos, 1.0);
+
+    // The stereographic projection occurs on geometry only
+    vec3 sphereCoord = vec3(uModel * vec4(vs_out.pos,  1.0));
+    vec3 normalized = sphereCoord / length(sphereCoord);
+    vec3 projection = vec3(normalized.x / (1 - normalized.z), normalized.y / (1 - normalized.z), 1.0);
+
+    vec4 result = vec4(uCamera * projection, 1.0);
+    result.z = sphereCoord.z / 2.0;
+    gl_Position = result;
 }

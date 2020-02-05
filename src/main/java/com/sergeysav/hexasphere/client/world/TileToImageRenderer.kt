@@ -10,15 +10,11 @@ import com.sergeysav.hexasphere.client.gl.Texture2D
 import com.sergeysav.hexasphere.client.gl.bound
 import com.sergeysav.hexasphere.common.LinAlgPool
 import com.sergeysav.hexasphere.common.loadResource
-import com.sergeysav.hexasphere.common.setUniform
 import com.sergeysav.hexasphere.common.world.tile.Tile
 import org.lwjgl.opengl.GL11
 import org.lwjgl.opengl.GL20
 import org.lwjgl.opengl.GL33C
 import org.lwjgl.system.MemoryStack
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.sin
 
 /**
  * @author sergeys
@@ -31,7 +27,7 @@ class TileToImageRenderer(val width: Int, val height: Int, private val linAlgPoo
     val texture2D = Texture2D(GL11.glGenTextures())
     private val shaderProgram = ShaderProgram()
     private val mesh: Mesh
-    private val vertices = FloatArray(TileBaker.FLOATS_PER_VERT * 6)
+    private val vertices = FloatArray(8 * 6)
     private val indices = IntArray(3 * 4)
     
     init {
@@ -39,11 +35,11 @@ class TileToImageRenderer(val width: Int, val height: Int, private val linAlgPoo
         shaderProgram.createFragmentShader(loadResource("/fragment.glsl"))
         shaderProgram.link()
         mesh = Mesh(GLDrawingMode.TRIANGLES, true)
-        mesh.setVertices(vertices, GLDataUsage.DYNAMIC, *TileBaker.vertexAttributes)
+//        mesh.setVertices(vertices, GLDataUsage.DYNAMIC, *TileBaker.vertexAttributes)
         mesh.bound {
             shaderProgram.validate()
         }
-        TileBaker.bakeTileIndices(6, indices, 0, 0)
+//        TileBaker.bakeTileIndices(6, indices, 0, 0)
         mesh.setIndexData(indices, GLDataUsage.STATIC)
         
         GL20.glUniform1i(shaderProgram.getUniform("texture1"), 0)
@@ -65,17 +61,17 @@ class TileToImageRenderer(val width: Int, val height: Int, private val linAlgPoo
         }
     }
     
-    fun render(tile: Tile, worldRenderable: WorldRenderable) {
+    fun render(tile: Tile) {
         MemoryStack.stackPush().use { stack ->
             val ints = stack.ints(0, 0, 0, 0)
             GL11.glGetIntegerv(GL11.GL_VIEWPORT, ints)
             
             val numVerts = tile.tilePolygon.polygonType.vertices
-            TileBaker.bakeTileVertices(tile, vertices, 0)
+//            TileBaker.bakeTileVertices(tile, vertices, 0)
             for (j in 0 until numVerts) {
-                vertices[TileBaker.FLOATS_PER_VERT * j + 0] = -cos(j * 2f * PI / numVerts - PI / 2).toFloat()
-                vertices[TileBaker.FLOATS_PER_VERT * j + 1] = sin(j * 2f * PI / numVerts - PI / 2).toFloat()
-                vertices[TileBaker.FLOATS_PER_VERT * j + 2] = 0f
+//                vertices[TileBaker.FLOATS_PER_VERT * j + 0] = -cos(j * 2f * PI / numVerts - PI / 2).toFloat()
+//                vertices[TileBaker.FLOATS_PER_VERT * j + 1] = sin(j * 2f * PI / numVerts - PI / 2).toFloat()
+//                vertices[TileBaker.FLOATS_PER_VERT * j + 2] = 0f
             }
             
             mesh.setVertexData(vertices)
@@ -85,15 +81,15 @@ class TileToImageRenderer(val width: Int, val height: Int, private val linAlgPoo
                 GL11.glClear(GL11.GL_COLOR_BUFFER_BIT)
                 GL11.glCullFace(GL11.GL_FRONT)
                 
-                worldRenderable.texture.bound {
-                    shaderProgram.bound {
-                        linAlgPool.mat4 { mat4 ->
-                            mat4.identity().setUniform(shaderProgram.getUniform("uCamera"))
-                            mat4.identity().setUniform(shaderProgram.getUniform("uModel"))
-                        }
-                        mesh.draw(3 * (numVerts - 2))
-                    }
-                }
+//                worldRenderable.texture.bound {
+//                    shaderProgram.bound {
+//                        linAlgPool.mat4 { mat4 ->
+//                            mat4.identity().setUniform(shaderProgram.getUniform("uCamera"))
+//                            mat4.identity().setUniform(shaderProgram.getUniform("uModel"))
+//                        }
+//                        mesh.draw(3 * (numVerts - 2))
+//                    }
+//                }
             }
             GL11.glViewport(ints[0], ints[1], ints[2], ints[3])
             GL11.glCullFace(GL11.GL_BACK)

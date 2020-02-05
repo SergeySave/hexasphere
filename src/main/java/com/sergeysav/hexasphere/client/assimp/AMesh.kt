@@ -41,12 +41,19 @@ class AMesh(aiMesh: AIMesh, vertexData: FloatArray, indexData: IntArray, private
             // vertex texture coords
             GL30.glEnableVertexAttribArray(2)
             GL30.glVertexAttribPointer(2, 2, GL11.GL_FLOAT, false, vertexSize, texOffset.toLong())
+            // vertex tangent
+            GL30.glEnableVertexAttribArray(1)
+            GL30.glVertexAttribPointer(3, 3, GL11.GL_FLOAT, false, vertexSize, tanOffset.toLong())
+            // vertex bitangent
+            GL30.glEnableVertexAttribArray(1)
+            GL30.glVertexAttribPointer(4, 3, GL11.GL_FLOAT, false, vertexSize, biTOffset.toLong())
         }
     }
     
     fun draw(shader: ShaderProgram, doDraw: Boolean = true) {
         var diffuseNr = 1
         var specularNr = 1
+        var normalNr = 1
         
         for (i in textures.indices) {
             GL20.glActiveTexture(GL20.GL_TEXTURE0 + i)
@@ -55,6 +62,7 @@ class AMesh(aiMesh: AIMesh, vertexData: FloatArray, indexData: IntArray, private
             val number = when (textures[i].type) {
                 ATexture.Type.DIFFUSE -> diffuseNr++
                 ATexture.Type.SPECULAR -> specularNr++
+                ATexture.Type.NORMAL -> normalNr++
             }
             
             GL20.glUniform1i(shader.getUniform("$name$number"), i)
@@ -80,7 +88,9 @@ class AMesh(aiMesh: AIMesh, vertexData: FloatArray, indexData: IntArray, private
     companion object {
         private val normalOffset = Vec3VertexAttribute("position").totalLength
         private val texOffset = normalOffset + Vec3VertexAttribute("normal").totalLength
-        private val vertexSize = texOffset + Vec2VertexAttribute("texCoords").totalLength
+        private val tanOffset = texOffset + Vec2VertexAttribute("texCoords").totalLength
+        private val biTOffset = tanOffset + Vec3VertexAttribute("tangent").totalLength
+        private val vertexSize = biTOffset + Vec3VertexAttribute("bitangent").totalLength
         val floatsPerVertex = vertexSize / 4;
     }
 }

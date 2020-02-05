@@ -1,6 +1,6 @@
 # Hexasphere
 
-This repository currently contains the code needed to generate and render a Goldberg Polyhedron, referred to as a hexasphere from now on.
+This repository currently contains the code needed to generate and render the Dual of a Subdivided Icosahedron, a Goldberg Polyhedron, referred to as a hexasphere from now on.
 These hexaspheres look like they are spheres tiled with hexagons. This is not entirely true as a hexasphere of any size will always include 12 pentagons.
 
 As of now the functionality contained in this repository can do the following things:

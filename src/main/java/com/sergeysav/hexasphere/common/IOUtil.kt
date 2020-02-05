@@ -69,4 +69,11 @@ object IOUtil {
             Hexasphere::class.java.getResource(resource).path
         }
     }
+    
+    fun doesResourceExist(resource: String): Boolean = try {
+        getResourcePath(resource)
+        true
+    } catch (e: IllegalStateException) {
+        false
+    }
 }

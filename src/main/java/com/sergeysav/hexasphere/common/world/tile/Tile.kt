@@ -2,8 +2,8 @@ package com.sergeysav.hexasphere.common.world.tile
 
 import com.sergeysav.hexasphere.common.world.tile.terrain.TerrainMajorFeature
 import com.sergeysav.hexasphere.common.world.tile.terrain.TerrainMinorFeature
-import com.sergeysav.hexasphere.common.world.tile.terrain.TerrainShape
 import com.sergeysav.hexasphere.common.world.tile.terrain.TerrainType
+import org.joml.Vector3f
 
 /**
  * @author sergeys
@@ -15,44 +15,22 @@ data class Tile(val tilePolygon: TilePolygon,
                 val temperature: Float,
                 val moisture: Float,
                 val type: TerrainType,
-                val shape: TerrainShape,
                 val majorFeature: TerrainMajorFeature,
                 val minorFeatures: Array<TerrainMinorFeature>) {
     
-    fun getColoring(): Triple<Float, Float, Float> {
-        if (minorFeatures.contains(TerrainMinorFeature.RiverFeature)) {
-            return Triple(0f, 0f, 0f)
-        }
-        return when (type) {
-            is TerrainType.GrassTerrainType      -> Triple(0f, 1f - when (majorFeature) {
-                is TerrainMajorFeature.ForestMajorFeature     -> 0.2f
-                is TerrainMajorFeature.RainforestMajorFeature -> 0.4f
-                else                                          -> 0f
-            }, 0f)
-            is TerrainType.PermafrostTerrainType -> Triple(1f, 1f - when (majorFeature) {
-                is TerrainMajorFeature.ForestMajorFeature -> 0.2f
-                else                                      -> 0f
-            }, 1f)
-            is TerrainType.SandTerrainType       -> Triple(0.5f, 0.5f + when (majorFeature) {
-                is TerrainMajorFeature.ForestMajorFeature -> 0.2f
-                else                                      -> 0f
-            }, 0f)
-            is TerrainType.WaterTerrainType      -> when (shape) {
-                is TerrainShape.CoastTerrainShape -> Triple(0f, 0f, 1f)
-                is TerrainShape.OceanTerrainShape -> Triple(0f, 0f, 0.5f)
-                is TerrainShape.IceTerrainShape   -> Triple(0.5f, 0.5f, 1f)
-                else                              -> Triple(0f, 0f, 0f)
-            }
-            is TerrainType.MountainTerrainType   -> Triple(0.5f, 0.5f, 0.5f)
-            else                                 -> Triple(0f, 0f, 0f)
-        }
-    }
+    lateinit var adjacent: Array<Tile>
+        private set
     
-    fun getImageCoords(): Pair<Int, Int> = when (shape) {
-        is TerrainShape.MountainTerrainShape -> 0 to 1
-        is TerrainShape.HillTerrainShape     -> 1 to 1
-        is TerrainShape.FlatTerrainShape     -> 0 to 0
-        else                                 -> 1 to 0
+    internal fun setAdjacent(adjacent: Array<Tile>) {
+        val vector3f = Vector3f()
+        val adj = Array(tilePolygon.wedges.size) {
+            val wedge = tilePolygon.wedges[it]
+            adjacent.minBy { a ->
+                a.tilePolygon.vertices.asSequence().map { v -> v.sub(wedge.vertex1, vector3f); vector3f.lengthSquared() }.min()!! +
+                a.tilePolygon.vertices.asSequence().map { v -> v.sub(wedge.vertex2, vector3f); vector3f.lengthSquared() }.min()!!
+            }!!
+        }
+        this.adjacent = adj
     }
     
     override fun equals(other: Any?): Boolean {
@@ -65,7 +43,7 @@ data class Tile(val tilePolygon: TilePolygon,
         if (moisture != other.moisture) return false
 //        if (biome != other.biome) return false
         if (type != other.type) return false
-        if (shape != other.shape) return false
+//        if (shape != other.shape) return false
         if (majorFeature != other.majorFeature) return false
         if (!minorFeatures.contentEquals(other.minorFeatures)) return false
         
@@ -79,7 +57,7 @@ data class Tile(val tilePolygon: TilePolygon,
         result = 31 * result + moisture.hashCode()
 //        result = 31 * result + biome.hashCode()
         result = 31 * result + type.hashCode()
-        result = 31 * result + shape.hashCode()
+//        result = 31 * result + shape.hashCode()
         result = 31 * result + majorFeature.hashCode()
         result = 31 * result + minorFeatures.contentHashCode()
         return result

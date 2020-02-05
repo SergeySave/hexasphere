@@ -90,12 +90,15 @@ fun MapGenerationSettings.generate(): World {
     
     log.trace { "Generating Terrain" }
     val terrain = generateTerrain(map, elevations, heat, moisture, riverness)
-    return World(map.map { baseTile ->
-        val v = Vector3f()
     
+//    val scaleFactor = (1/terrain.keys.asSequence().flatMap { it.vertices.asSequence() }.map { it.length() }.average()).toFloat()
+    
+    val tiles = terrain.mapValues { (baseTile, terr) ->
+        val v = Vector3f()
+        
         val verts = Array(baseTile.type.vertices) { Vector3f() }
         baseTile.getVertices(verts)
-    
+        
         // as primary orientation is a unit vector, this is a projection onto it
         var value = PRIMARY_ORIENTATION.dot(verts[0])
         var index = 0
@@ -117,15 +120,29 @@ fun MapGenerationSettings.generate(): World {
             val prev = v.sub(verts[(index - 1) mod verts.size]).normalize().dot(secOrientation)
             if (next >= prev) -1 else 1
         }
+        
+        val tileVerts: Array<Vector3fc> = Array(verts.size) { verts[(direction * it + index) mod verts.size].normalize() }
+        v.zero()
+        tileVerts.forEach { v.add(it) }
+        v.mul(1f/verts.size)
+        
+        val norm = Vector3f()
+        linAlgPool.vec3 { v1 ->
+            linAlgPool.vec3 { v2 ->
+                tileVerts.indices.forEach {
+                    norm.add(v1.set(tileVerts[it]).sub(v).cross(v2.set(tileVerts[(it + 1) % verts.size]).sub(v)).normalize())
+                }
+            }
+        }
     
-    
-        baseTile.getCenter(v)
-        val terr = terrain.getValue(baseTile)
-        Tile(TilePolygon(v.normalize(),
-                         Array(verts.size) { verts[(direction * it + index) mod verts.size].normalize() }),
+        Tile(TilePolygon(v, tileVerts, norm.normalize()),
              elevations.getValue(baseTile), heat.getValue(baseTile), moisture.getValue(baseTile),
-             terr.type, terr.shape, terr.majorFeature, terr.minorFeatures)
-    }.toTypedArray())
+             terr.type, terr.majorFeature, terr.minorFeatures)
+    }
+    tiles.forEach { (gen, tile) ->
+        tile.setAdjacent(gen.adjacent.mapNotNull(tiles::get).toTypedArray())
+    }
+    return World(tiles.values.toTypedArray())
 }
 
 private infix fun Int.mod(other: Int): Int = if (this >= 0) {

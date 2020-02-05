@@ -16,6 +16,7 @@ data class ATexture(val texture2D: Texture2D, val path: String, val type: Type) 
     
     enum class Type(val typeName: String, val assimpType: Int) {
         DIFFUSE("texture_diffuse", Assimp.aiTextureType_DIFFUSE),
-        SPECULAR("texture_specular", Assimp.aiTextureType_SPECULAR)
+        SPECULAR("texture_specular", Assimp.aiTextureType_SPECULAR),
+        NORMAL("texture_normal", Assimp.aiTextureType_HEIGHT)
     }
 }
