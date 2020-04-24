@@ -10,6 +10,6 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.450000
 d 1.000000
 illum 2
-map_Bump Hills.Normal.png
-map_Kd Hills.Diffuse.png
-map_Ks Hills.Specular.png
+map_Bump Grass.Normal.png
+map_Kd Grass.Diffuse.png
+map_Ks Grass.Specular.png

@@ -31,8 +31,8 @@ class TileToImageRenderer(val width: Int, val height: Int, private val linAlgPoo
     private val indices = IntArray(3 * 4)
     
     init {
-        shaderProgram.createVertexShader(loadResource("/vertex.glsl"))
-        shaderProgram.createFragmentShader(loadResource("/fragment.glsl"))
+        shaderProgram.createVertexShader(loadResource("/shader/vertex.glsl"))
+        shaderProgram.createFragmentShader(loadResource("/shader/fragment.glsl"))
         shaderProgram.link()
         mesh = Mesh(GLDrawingMode.TRIANGLES, true)
 //        mesh.setVertices(vertices, GLDataUsage.DYNAMIC, *TileBaker.vertexAttributes)

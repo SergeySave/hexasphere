@@ -15,7 +15,7 @@ import org.lwjgl.opengl.GL20
 /**
  * @author sergeys
  *
- * @constructor Creates a new NormalRenderer
+ * @constructor Creates a new SimpleStereographicRenderer
  */
 class SimpleStereographicRenderer(val linAlgPool: LinAlgPool): Renderer {
     
@@ -24,8 +24,8 @@ class SimpleStereographicRenderer(val linAlgPool: LinAlgPool): Renderer {
     private val cameraOffset = 1.072f
     
     init {
-        shader.createVertexShader(loadResource("/stereographic_model.vertex.glsl"))
-        shader.createFragmentShader(loadResource("/stereographic_model.fragment.glsl"))
+        shader.createVertexShader(loadResource("/shader/stereographic_model.vertex.glsl"))
+        shader.createFragmentShader(loadResource("/shader/stereographic_model.fragment.glsl"))
         shader.link()
     }
     

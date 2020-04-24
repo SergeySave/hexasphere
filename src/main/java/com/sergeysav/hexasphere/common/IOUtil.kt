@@ -40,7 +40,7 @@ object IOUtil {
                 }
             }
         } else {
-            Hexasphere::class.java.getResourceAsStream(resource)!!.use { source ->
+            Hexasphere::class.java.getResourceAsStream(resource)?.use { source ->
                 Channels.newChannel(source).use { rbc ->
                     buffer = createByteBuffer(bufferSize)
                     
@@ -54,7 +54,7 @@ object IOUtil {
                         }
                     }
                 }
-            }
+            } ?: error("Resource $resource not found")
         }
         
         buffer.flip()

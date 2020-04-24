@@ -24,15 +24,15 @@ interface TerrainType {
                    SeaTerrainType
     object Ocean : SimpleTerrainType("Ocean", "/terrain/ocean/base.obj"),
                    SeaTerrainType
-    object Plains : SimpleTerrainType("Plains", "/terrain/plains/base.obj"),
+    object Plains : SimpleTerrainType("Plains", "/terrain/new_plains/plains.obj"),
                     LandTerrainType
-    object PlainsRiver : AbstractRiverTerrainType("River Plains", "/terrain/plains/plains_river.obj", "/terrain/plains/plains_river_forward.obj"),
+    object PlainsRiver : AbstractRiverTerrainType("River Plains", "/terrain/plains_river/base/plains_river.obj", "/terrain/plains_river/side/plains_river.obj"),
                          RiverTerrainType, LandTerrainType
     object Hills : SimpleTerrainType("Hills", "/terrain/hills/hills.obj"),
                    LandTerrainType
     object HillsRiver : SimpleTerrainType("River Hills", "/terrain/hills/river.obj"),
                         RiverTerrainType, LandTerrainType
-    object Mountain : SimpleTerrainType("Hills", "/terrain/mountain/base.obj")
+    object Mountain : SimpleTerrainType("Hills", "/terrain/mountains/mountains.obj")
     object Desert : SimpleTerrainType("Desert", "/terrain/desert/base.obj"),
                     LandTerrainType
     object DesertRiver : SimpleTerrainType("River Desert", "/terrain/desert/river.obj"),

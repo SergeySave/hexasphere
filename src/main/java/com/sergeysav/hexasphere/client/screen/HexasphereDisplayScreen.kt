@@ -65,14 +65,8 @@ class HexasphereDisplayScreen(val linAlgPool: LinAlgPool, seed: Long): Screen {
         cameraController.lookAt(0f, 0f, 0f)
         
         log.trace { "Creating Hexasphere Mesh" }
-        val mesh = Mesh(GLDrawingMode.TRIANGLES, true)
-    
-        val texture = Image.createTexture("/shapes/together.png", GL11.GL_RGB, GL11.GL_RGB,
-                                          generateMipmaps = true)
         
         world = mapGenerationSettings.generate()
-    
-//        val flatModel = AssimpUtils.loadModel("/triangle/triangle.obj")
     
         worldRenderable = WorldRenderable(world, Matrix4f(), linAlgPool)
     

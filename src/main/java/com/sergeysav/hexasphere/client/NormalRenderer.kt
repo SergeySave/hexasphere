@@ -25,8 +25,8 @@ class NormalRenderer(val linAlgPool: LinAlgPool) : Renderer {
     private val model = Matrix4f()
     
     init {
-        shader.createVertexShader(loadResource("/model.vertex.glsl"))
-        shader.createFragmentShader(loadResource("/model.fragment.glsl"))
+        shader.createVertexShader(loadResource("/shader/model.vertex.glsl"))
+        shader.createFragmentShader(loadResource("/shader/model.fragment.glsl"))
         shader.link()
     }
     

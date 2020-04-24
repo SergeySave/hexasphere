@@ -23,7 +23,7 @@ import kotlin.math.roundToInt
 class WedgeInstancedMeshRenderer(private val mesh: AMesh, private val startingAttributeIndex: Int, private val linAlgPool: LinAlgPool) {
     
     private val scaleFactor = 1.5
-    private val radialScale = 0.1f
+    private val radialScale = 0.02f
     private val matrixVBO = VertexBufferObject()
     private val colorVBO = VertexBufferObject()
     private val wedgeIndex = MutableBiMap<TileWedge, Int>()

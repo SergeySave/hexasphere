@@ -135,7 +135,7 @@ object AssimpUtils {
         aTexture
     } else {
         if (IOUtil.doesResourceExist(path)) {
-            val texture = if (path == "/MissingImage.png") {
+            val texture = if (path == "/missing/MissingImage.png") {
                 Image.createTexture(path,
                                     generateMipmaps = false,
                                     minInterp = TextureInterpolationMode.NEAREST,
@@ -149,7 +149,7 @@ object AssimpUtils {
             aTexture
         } else {
             logger.info { "Texture Resource Does Not Exist: $path" }
-            val aTexture = loadTexture("/MissingImage.png", ATexture.Type.DIFFUSE)
+            val aTexture = loadTexture("/missing/MissingImage.png", ATexture.Type.DIFFUSE)
             ATexture(aTexture.texture2D, aTexture.path, type)
         }
     }

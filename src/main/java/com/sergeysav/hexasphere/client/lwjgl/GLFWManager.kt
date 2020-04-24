@@ -157,7 +157,7 @@ abstract class GLFWManager(width: Int, height: Int): InputManager() {
     
         GLFW.glfwSetCharCallback(window) { _, codePoint -> handleCharacterCallback(codePoint) }
     
-        gui = Gui(this, "/Helvetica.ttf")
+        gui = Gui(this, "/font/Helvetica.ttf")
    
         log.trace { "Setting window contexts" }
         // Get the thread stack and push a new frame
